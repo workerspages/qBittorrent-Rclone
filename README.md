@@ -117,7 +117,7 @@ WebDAV 服务挂载在 `/webdav` 路径下。请在本地电脑终端运行 `rcl
 **将云端下载好的文件拉取到本地，并自动删除云端文件以释放 PaaS 空间：**
 
 ```bash
-rclone move paas-webdav:/ /您的本地/下载路径/ --delete-empty-src-dirs --transfers 4 --progress
+rclone move -Pv paas-webdav:/ "Z:\下载目录\" --delete-empty-src-dirs --transfers 1 --retries 10 --buffer-size 16M
 
 ```
 
