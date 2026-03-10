@@ -1,0 +1,24 @@
+#!/bin/bash
+set -e
+
+echo "================================================="
+echo "Starting qBittorrent Enhanced Edition + WebDAV..."
+echo "================================================="
+
+# 确保必要的目录存在
+mkdir -p /data/downloads
+mkdir -p /data/config
+mkdir -p /data/rclone
+
+# 启动 rclone 的 WebDAV 服务 (后台运行)
+# 指向 /data/downloads，这样本地通过 WebDAV 只能访问到下载好的文件
+echo "Starting WebDAV server via rclone on port ${WEBDAV_PORT}..."
+rclone serve webdav /data/downloads \
+    --addr :${WEBDAV_PORT} \
+    --user "${WEBDAV_USER}" \
+    --pass "${WEBDAV_PASS}" \
+    --vfs-cache-mode writes &
+
+# 启动 qbittorrent-nox (前台运行)
+echo "Starting qbittorrent-nox..."
+exec qbittorrent-nox --profile="${QBT_PROFILE}" --webui-port="${QBT_WEBUI_PORT}"
