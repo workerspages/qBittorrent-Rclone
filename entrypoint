@@ -15,17 +15,22 @@ QBT_CONFIG_FILE="/data/config/qBittorrent/config/qBittorrent.conf"
 # ==========================================
 # 1. 自动配置 qBittorrent (解决无终端痛点)
 # ==========================================
-# 如果配置文件不存在，初始化它并写入固定的 admin / adminadmin 密码 Hash
-# 这完美绕过了新版本 qBittorrent 在控制台生成临时密码的问题
+# 如果配置文件不存在，初始化它并写入默认凭据和默认下载路径。
+# 强制将下载路径写入 /data/downloads，确保与 WebDAV 完美对接
 if [ ! -f "$QBT_CONFIG_FILE" ]; then
     echo "Creating default qBittorrent configuration..."
     cat <<EOF > "$QBT_CONFIG_FILE"
+[BitTorrent]
+Session\DefaultSavePath=/data/downloads
+
 [Preferences]
+Downloads\SavePath=/data/downloads
 WebUI\Port=${PORT}
 WebUI\Username=admin
 WebUI\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8O1QdXg2lfi5P1hGWe1Z2A==)"
 EOF
     echo "Initial credentials set to: admin / adminadmin"
+    echo "Default save path permanently linked to: /data/downloads"
 else
     # 如果配置文件已存在，确保 WebUI 端口与 PaaS 环境变量 $PORT 保持一致
     echo "Updating WebUI port to ${PORT} in existing configuration..."
@@ -40,7 +45,7 @@ fi
 # ==========================================
 # 2. 启动 WebDAV 服务 (后台运行)
 # ==========================================
-# 完全使用环境变量控制端口和权限，限定访问目录为 /data/downloads
+# 严格限定访问目录为 /data/downloads
 echo "Starting WebDAV on port ${WEBDAV_PORT} with user: ${WEBDAV_USER}"
 rclone serve webdav /data/downloads \
     --addr :${WEBDAV_PORT} \
