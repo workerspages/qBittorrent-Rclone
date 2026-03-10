@@ -133,5 +133,52 @@ Fork 或克隆此仓库后：
 4. 推送到 `main` 分支即可自动构建并发布。
 
 ---
+## 本地 `rclone` 的配置
+
+在这里，针对我们镜像中内置的 WebDAV 服务（由 rclone 提供），您有两种选择，**推荐选择第 7 项**：
+
+### 🛠️ 选择指南
+
+1. **输入 `7` (rclone)**：
+这是最完美的匹配。因为我们的镜像内部正是使用 `rclone serve webdav` 启动的服务，选择 `7` 可以获得最佳的兼容性。
+2. **或者输入 `8` (other)**：
+这也是通用的选择，通常不会有问题。
+
+---
+
+### ⏩ 接下来的完整操作步骤（参考）：
+
+完成 `vendor` 选择后，请按以下步骤继续：
+
+1. **user (用户名)**：
+输入您在 Zeabur 环境变量中设置的 `WEBDAV_USER`（默认是 `admin`）。
+2. **pass (密码)**：
+* 选择 `y` (Yes type in my own password)。
+* 输入您在环境变量中设置的 `WEBDAV_PASS`（输入时屏幕不会显示字符）。
+* 再次输入确认。
+
+
+3. **bearer_token**：
+直接**回车**跳过（Leave empty）。
+4. **Edit advanced config?**：
+输入 `n` (No)。
+5. **Keep this "paas-webdav" remote?**：
+输入 `y` (Yes) 确认保存。
+
+---
+
+### 🧪 测试连接是否成功
+
+配置完成后，您可以直接在终端输入以下命令测试一下（假设您的远端命名为 `paas-webdav`）：
+
+```bash
+rclone lsd paas-webdav:/
+
+```
+
+如果您能看到 `/data/downloads` 目录下的内容，说明整套“云端下载 + 本地拉取”的链路已经彻底打通了！
+
+
+---
 
 *Powered by [qBittorrent-Enhanced-Edition](https://github.com/c0re100/qBittorrent-Enhanced-Edition), [Rclone](https://rclone.org/) & [Caddy*](https://caddyserver.com/)
