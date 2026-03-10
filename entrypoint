@@ -2,23 +2,54 @@
 set -e
 
 echo "================================================="
-echo "Starting qBittorrent Enhanced Edition + WebDAV..."
+echo "Initializing PaaS Environment Config..."
 echo "================================================="
 
-# 确保必要的目录存在
+# 确保目录结构存在 (防止挂载空数据卷导致目录丢失)
 mkdir -p /data/downloads
-mkdir -p /data/config
+mkdir -p /data/config/qBittorrent/config
 mkdir -p /data/rclone
 
-# 启动 rclone 的 WebDAV 服务 (后台运行)
-# 指向 /data/downloads，这样本地通过 WebDAV 只能访问到下载好的文件
-echo "Starting WebDAV server via rclone on port ${WEBDAV_PORT}..."
+QBT_CONFIG_FILE="/data/config/qBittorrent/config/qBittorrent.conf"
+
+# ==========================================
+# 1. 自动配置 qBittorrent (解决无终端痛点)
+# ==========================================
+# 如果配置文件不存在，初始化它并写入固定的 admin / adminadmin 密码 Hash
+# 这完美绕过了新版本 qBittorrent 在控制台生成临时密码的问题
+if [ ! -f "$QBT_CONFIG_FILE" ]; then
+    echo "Creating default qBittorrent configuration..."
+    cat <<EOF > "$QBT_CONFIG_FILE"
+[Preferences]
+WebUI\Port=${PORT}
+WebUI\Username=admin
+WebUI\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8O1QdXg2lfi5P1hGWe1Z2A==)"
+EOF
+    echo "Initial credentials set to: admin / adminadmin"
+else
+    # 如果配置文件已存在，确保 WebUI 端口与 PaaS 环境变量 $PORT 保持一致
+    echo "Updating WebUI port to ${PORT} in existing configuration..."
+    sed -i "s/^WebUI\\\\Port=.*/WebUI\\\\Port=${PORT}/g" "$QBT_CONFIG_FILE"
+    
+    # 如果旧配置文件中没有 Port 字段，则追加进去
+    if ! grep -q "^WebUI\\\\Port=" "$QBT_CONFIG_FILE"; then
+        sed -i "/\[Preferences\]/a WebUI\\\\Port=${PORT}" "$QBT_CONFIG_FILE"
+    fi
+fi
+
+# ==========================================
+# 2. 启动 WebDAV 服务 (后台运行)
+# ==========================================
+# 完全使用环境变量控制端口和权限，限定访问目录为 /data/downloads
+echo "Starting WebDAV on port ${WEBDAV_PORT} with user: ${WEBDAV_USER}"
 rclone serve webdav /data/downloads \
     --addr :${WEBDAV_PORT} \
     --user "${WEBDAV_USER}" \
     --pass "${WEBDAV_PASS}" \
     --vfs-cache-mode writes &
 
-# 启动 qbittorrent-nox (前台运行)
-echo "Starting qbittorrent-nox..."
-exec qbittorrent-nox --profile="${QBT_PROFILE}" --webui-port="${QBT_WEBUI_PORT}"
+# ==========================================
+# 3. 启动 qBittorrent (前台运行，占据主进程)
+# ==========================================
+echo "Starting qBittorrent Enhanced Edition..."
+exec qbittorrent-nox --profile="/data/config"
