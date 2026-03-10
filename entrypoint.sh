@@ -50,8 +50,9 @@ Session\\AddExtensionToIncompleteFiles=true
 Session\\AddTorrentStopped=false
 Session\\AddTrackersFromURLEnabled=true
 Session\\AdditionalTrackersURL=https://cf.trackerslist.com/all.txt
-Session\\AsyncIOThreadsCount=4
+Session\\AsyncIOThreadsCount=1
 Session\\AutoBanUnknownPeer=true
+Session\\BTProtocol=TCP
 Session\\ConnectionSpeed=15
 Session\\DHTEnabled=true
 Session\\DefaultSavePath=/data/downloads/ok
@@ -60,13 +61,16 @@ Session\\DiskIOReadMode=DisableOSCache
 Session\\DiskIOWriteMode=DisableOSCache
 Session\\Encryption=0
 Session\\ExcludedFileNames=
+Session\\FilePoolSize=40
 Session\\FinishedTorrentExportDirectory="/data/downloads/torrent "
-Session\\LSDEnabled=true
-Session\\MaxConnections=300
-Session\\MaxConnectionsPerTorrent=100
+Session\\LSDEnabled=false
+Session\\MaxConnections=100
+Session\\MaxConnectionsPerTorrent=30
+Session\\MaxUploads=10
+Session\\MaxUploadsPerTorrent=2
 Session\\PeXEnabled=true
 Session\\Port=6881
-Session\\Preallocation=true
+Session\\Preallocation=false
 Session\\QueueingSystemEnabled=true
 Session\\SSL\\Port=49490
 Session\\SendBufferWatermark=2048
@@ -77,6 +81,9 @@ Session\\UseUPnP=false
 
 [Core]
 AutoDeleteAddedTorrentFile=IfAdded
+
+[LegalNotice]
+Accepted=true
 
 [Meta]
 MigrationVersion=8
@@ -91,7 +98,7 @@ Proxy\\Profiles\\RSS=true
 [Preferences]
 Bittorrent\\DHT=true
 Bittorrent\\Encryption=0
-Bittorrent\\LSD=true
+Bittorrent\\LSD=false
 Bittorrent\\PeX=true
 Connection\\PortRangeMin=6881
 Connection\\ResolvePeerCountries=false
@@ -106,8 +113,8 @@ WebUI\\Port=18080
 WebUI\\Username=admin
 
 [RSS]
-AutoDownloader\\\\DownloadRepacks=true
-AutoDownloader\\\\SmartEpisodeFilter=s(\\\\d+)e(\\\\d+), (\\\\d+)x(\\\\d+), "(\\\\d{4}[.\\\\-]\\\\d{1,2}[.\\\\-]\\\\d{1,2})", "(\\\\d{1,2}[.\\\\-]\\\\d{1,2}[.\\\\-]\\\\d{4})"
+AutoDownloader\\DownloadRepacks=true
+AutoDownloader\\SmartEpisodeFilter=s(\\\\d+)e(\\\\d+), (\\\\d+)x(\\\\d+), "(\\\\d{4}[.\\\\-]\\\\d{1,2}[.\\\\-]\\\\d{1,2})", "(\\\\d{1,2}[.\\\\-]\\\\d{1,2}[.\\\\-]\\\\d{4})"
 EOF
     echo "Initial credentials set to: ${CURRENT_USER} / adminadmin"
     echo "Optimized settings applied: Port 6881, 2000 Connections, Chinese UI, Auto-Trackers."
