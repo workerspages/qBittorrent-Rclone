@@ -91,9 +91,11 @@ FileLogger\\Path=/data/config/qBittorrent/data/logs
 
 [AutoRun]
 Enabled=true
-Program=sh $NOTIFY_SCRIPT "%N"
-OnTorrentFinished\\Enabled=true
-OnTorrentFinished\\Program=sh $NOTIFY_SCRIPT "%N"
+OnTorrentFinished\Enabled=true
+OnTorrentFinished\Program=sh /data/config/qBittorrent/config/notify.sh %N
+Program=sh /data/config/qBittorrent/config/notify.sh %N
+enabled=true
+program=sh /data/config/qBittorrent/config/notify.sh \"%N\"
 
 [BitTorrent]
 Session\\AddExtensionToIncompleteFiles=true
