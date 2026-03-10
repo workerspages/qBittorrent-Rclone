@@ -168,6 +168,3 @@ Fork 或克隆此仓库后，要启用自动构建推送到 Docker Hub：
 ---
 
 *Powered by [qBittorrent-Enhanced-Edition](https://github.com/c0re100/qBittorrent-Enhanced-Edition) and [Rclone*](https://rclone.org/)
-
-```
-
