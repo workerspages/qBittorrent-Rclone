@@ -36,30 +36,79 @@ if [ ! -f "$QBT_CONFIG_FILE" ]; then
     echo "Creating DEFAULT & OPTIMIZED qBittorrent configuration..."
     # 注入全部提速和本地化参数
     cat <<EOF > "$QBT_CONFIG_FILE"
+[Application]
+FileLogger\Age=1
+FileLogger\AgeType=1
+FileLogger\Backup=true
+FileLogger\DeleteOld=true
+FileLogger\Enabled=true
+FileLogger\MaxSizeBytes=66560
+FileLogger\Path=/data/config/qBittorrent/data/logs
+
 [BitTorrent]
-Session\\DefaultSavePath=/data/downloads
-Session\\Port=6881
-Session\\UseUPnP=false
+Session\AddExtensionToIncompleteFiles=true
+Session\AddTorrentStopped=false
 Session\AddTrackersFromURLEnabled=true
 Session\AdditionalTrackersURL=https://cf.trackerslist.com/all.txt
+Session\AsyncIOThreadsCount=4
+Session\AutoBanUnknownPeer=true
+Session\ConnectionSpeed=15
+Session\DHTEnabled=true
+Session\DefaultSavePath=/data/downloads
 Session\DiskCacheSize=32
+Session\DiskIOReadMode=DisableOSCache
+Session\DiskIOWriteMode=DisableOSCache
+Session\Encryption=0
+Session\ExcludedFileNames=
+Session\FinishedTorrentExportDirectory="/data/downloads/torrent "
+Session\LSDEnabled=true
 Session\MaxConnections=500
 Session\MaxConnectionsPerTorrent=100
+Session\PeXEnabled=true
+Session\Port=6881
+Session\Preallocation=true
+Session\QueueingSystemEnabled=true
+Session\SSL\Port=49490
+Session\SendBufferWatermark=2048
+Session\ShareLimitAction=Stop
+Session\TempPathEnabled=true
+Session\TorrentExportDirectory="/data/downloads/torrent "
+Session\UseUPnP=false
 
+[Core]
+AutoDeleteAddedTorrentFile=IfAdded
+
+[Meta]
+MigrationVersion=8
+
+[Network]
+PortForwardingEnabled=false
+Proxy\HostnameLookupEnabled=false
+Proxy\Profiles\BitTorrent=true
+Proxy\Profiles\Misc=true
+Proxy\Profiles\RSS=true
 
 [Preferences]
-Downloads\\SavePath=/data/downloads
-WebUI\\Port=${QBT_INTERNAL_PORT}
-WebUI\\Username=${CURRENT_USER}
-WebUI\\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8NR1Gur2hmQCvCDpm39Q+PsJRJPaCU51dEiz+dTzh8qbPsL8WkFljQYFQ==)"
-WebUI\\Locale=zh
-General\\Locale=zh
-Connection\\PortRangeMin=6881
-Connection\\UPnP=false
-Bittorrent\\DHT=true
-Bittorrent\\PeX=true
-Bittorrent\\LSD=true
-Bittorrent\\Encryption=0
+Bittorrent\DHT=true
+Bittorrent\Encryption=0
+Bittorrent\LSD=true
+Bittorrent\PeX=true
+Connection\PortRangeMin=6881
+Connection\ResolvePeerCountries=false
+Connection\UPnP=false
+Downloads\SavePath=/data/downloads
+General\Locale=zh_CN
+MailNotification\req_auth=true
+WebUI\AuthSubnetWhitelist=@Invalid()
+WebUI\Locale=zh
+WebUI\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8NR1Gur2hmQCvCDpm39Q+PsJRJPaCU51dEiz+dTzh8qbPsL8WkFljQYFQ==)"
+WebUI\Port=18080
+WebUI\Username=admin
+
+[RSS]
+AutoDownloader\DownloadRepacks=true
+AutoDownloader\SmartEpisodeFilter=s(\\d+)e(\\d+), (\\d+)x(\\d+), "(\\d{4}[.\\-]\\d{1,2}[.\\-]\\d{1,2})", "(\\d{1,2}[.\\-]\\d{1,2}[.\\-]\\d{4})"
+
 EOF
     echo "Initial credentials set to: ${CURRENT_USER} / adminadmin"
     echo "Optimized settings applied: Port 6881, 2000 Connections, Chinese UI, Auto-Trackers."
