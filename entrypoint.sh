@@ -30,22 +30,39 @@ if grep -q "WebUIPassword" "$QBT_CONFIG_FILE" 2>/dev/null || grep -q "O1QdXg2lfi
 fi
 
 # ==========================================
-# 1. 自动配置 qBittorrent (绑定内部端口)
+# 1. 自动配置 qBittorrent (绑定内部端口与极限提速默认值)
 # ==========================================
 if [ ! -f "$QBT_CONFIG_FILE" ]; then
-    echo "Creating default qBittorrent configuration..."
-    # 反斜杠已加倍，并使用了完全正确的 88 位 adminadmin Hash
+    echo "Creating DEFAULT & OPTIMIZED qBittorrent configuration..."
+    # 注入全部提速和本地化参数
     cat <<EOF > "$QBT_CONFIG_FILE"
 [BitTorrent]
 Session\\DefaultSavePath=/data/downloads
+Session\\Port=6881
+Session\\UseUPnP=false
 
 [Preferences]
 Downloads\\SavePath=/data/downloads
 WebUI\\Port=${QBT_INTERNAL_PORT}
 WebUI\\Username=${CURRENT_USER}
 WebUI\\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8NR1Gur2hmQCvCDpm39Q+PsJRJPaCU51dEiz+dTzh8qbPsL8WkFljQYFQ==)"
+WebUI\\Locale=zh
+General\\Locale=zh
+Connection\\PortRangeMin=6881
+Connection\\UPnP=false
+Connection\\MaxConnections=2000
+Connection\\MaxConnectionsPerTorrent=500
+Connection\\MaxUploads=20
+Connection\\MaxUploadsPerTorrent=4
+Bittorrent\\DHT=true
+Bittorrent\\PeX=true
+Bittorrent\\LSD=true
+Bittorrent\\Encryption=0
+Advanced\\trackerListUrl=https://cf.trackerslist.com/all.txt
+Advanced\\trackerListEnable=true
 EOF
     echo "Initial credentials set to: ${CURRENT_USER} / adminadmin"
+    echo "Optimized settings applied: Port 6881, 2000 Connections, Chinese UI, Auto-Trackers."
 else
     echo "Updating WebUI internal port and username..."
     sed -i "s/^WebUI\\\\Port=.*/WebUI\\\\Port=${QBT_INTERNAL_PORT}/g" "$QBT_CONFIG_FILE"
@@ -70,11 +87,9 @@ CADDY_CONFIG="/tmp/Caddyfile"
 echo "Generating Caddy routing on public port ${PUBLIC_PORT}..."
 cat <<EOF > "$CADDY_CONFIG"
 :${PUBLIC_PORT} {
-    # 将 /webdav 及其后的路径转发给 Rclone
     handle /webdav/* {
         reverse_proxy 127.0.0.1:${WEBDAV_INTERNAL_PORT}
     }
-    # 其他所有默认根路径转发给 qBittorrent
     handle {
         reverse_proxy 127.0.0.1:${QBT_INTERNAL_PORT}
     }
