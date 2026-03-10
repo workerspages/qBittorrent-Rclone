@@ -7,7 +7,8 @@
 
 - **自动构建最新版**：通过 GitHub Actions 每天自动从上游获取并编译最新的 qBittorrent Enhanced Edition 静态核心。
 - **专为 PaaS 优化**：
-  - 完美解决新版 qBittorrent 需要在终端查看随机生成密码的痛点，启动时自动注入默认账号密码。
+  - 支持通过环境变量 `QBT_USER` 直接设置 qBittorrent 后台登录账号。
+  - 完美解决新版 qBittorrent 需要在终端查看随机生成密码的痛点，启动时自动注入默认密码 Hash。
   - 动态适配 PaaS 平台注入的 `$PORT` 环境变量。
   - 容器启动时自动修复 `/data` 目录读写权限，解决 PaaS 挂载存储卷时的 `Permission denied` 问题。
 - **内置 WebDAV 服务**：基于 Rclone 提供轻量、纯净的 WebDAV 服务，零额外依赖，默认指向 `/data/downloads` 下载目录。
@@ -21,6 +22,7 @@
 
 | 变量名 | 默认值 | 说明 |
 | :--- | :--- | :--- |
+| `QBT_USER` | `admin` | qBittorrent WebUI 面板的登录用户名。 |
 | `PORT` | `8080` | qBittorrent WebUI 面板端口。部分 PaaS 会自动强行注入此变量。 |
 | `WEBDAV_PORT` | `8081` | Rclone WebDAV 服务的监听端口。 |
 | `WEBDAV_USER` | `admin` | WebDAV 服务的登录用户名，**强烈建议修改**。 |
@@ -41,13 +43,13 @@
 
 ## 🚀 部署指南
 
-### 1. 在 PaaS 平台部署 (如 Render, Zeabur, Railway 等)
+### 1. 在 PaaS 平台部署 (如 Zeabur, Render, Railway 等)
 
 1. 在您的 PaaS 控制台创建一个新的 Docker/Container 服务。
 2. 填入您的镜像地址：`您的DockerHub用户名/qbittorrent-ee-rclone:latest` 或 `ghcr.io/您的GitHub用户名/您的仓库名:latest`。
-3. 在 **Environment Variables (环境变量)** 设置中，添加并修改上述提及的变量（务必修改 `WEBDAV_USER` 和 `WEBDAV_PASS`）。
+3. 在 **Environment Variables (环境变量)** 设置中，添加并修改上述提及的变量（务必配置 `QBT_USER`, `WEBDAV_USER` 和 `WEBDAV_PASS`）。
 4. （非常重要）添加持久化存储卷 (Volume)，将其挂载到容器的 `/data` 路径。
-5. 确保 PaaS 平台对外暴露了 `$PORT` 和 `WEBDAV_PORT` 对应的端口。
+5. 确保 PaaS 平台对外暴露了 `$PORT` 和 `WEBDAV_PORT` 对应的端口，并建议开启 `6881` TCP 端口转发以获得更好的下载速度。
 
 ### 2. 本地使用 Docker Compose 部署测试
 
@@ -61,9 +63,10 @@ services:
     container_name: qbittorrent-webdav
     restart: unless-stopped
     environment:
+      - QBT_USER=myqbtuser
       - PORT=8080
       - WEBDAV_PORT=8081
-      - WEBDAV_USER=myuser
+      - WEBDAV_USER=mywebdavuser
       - WEBDAV_PASS=mypassword
       - TZ=Asia/Shanghai
     ports:
@@ -85,15 +88,15 @@ docker-compose up -d
 
 ---
 
-## 💡 使用说明与默认凭据
+## 💡 使用说明与初始凭据
 
 ### qBittorrent WebUI 面板
 
 * **访问地址**：`http://<您的IP或PaaS域名>:<PORT>`
-* **默认账号**：`admin`
-* **默认密码**：`adminadmin`
+* **初始账号**：您在环境变量 `QBT_USER` 中设置的值（默认 `admin`）。
+* **初始密码**：`adminadmin`
 
-> **⚠️ 警告**：为了您的数据安全，请在首次登录后，立即前往 **设置 -> Web UI** 中修改账号和密码！
+> **⚠️ 警告**：由于安全限制，初始密码固定为 `adminadmin`。为了您的数据安全，请在首次登录后，立即前往 **工具 (Tools) -> 选项 (Options) -> Web UI** 中修改为您自己的强密码！
 
 ---
 
@@ -114,7 +117,7 @@ rclone config
 * 输入 `n` (新建远端 New remote)
 * 命名为：`paas-webdav` (或者您喜欢的其他名字)
 * 类型 (Type) 选择：`webdav`
-* URL 输入：`http://<您的PaaS域名或IP>:8081` (请替换为实际地址和映射的 WebDAV 端口)
+* URL 输入：`https://<您的WebDAV域名>` (或 `http://IP:端口`)
 * Vendor 选择：`other`
 * User 输入：您在环境变量中设置的 `WEBDAV_USER`
 * Password 输入：选择 `y` 输入自己的密码，然后输入您在环境变量中设置的 `WEBDAV_PASS`
@@ -168,6 +171,3 @@ Fork 或克隆此仓库后，要启用自动构建推送到 Docker Hub：
 
 ```
 
-这个 README 文件现在不仅包含部署指南，还形成了一个完整的闭环指导。您是否需要我为您整理一份将代码提交至 GitHub 并触发自动化构建的完整 Git 命令流程？
-
-```
