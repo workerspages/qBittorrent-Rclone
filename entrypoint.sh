@@ -110,6 +110,9 @@ rclone serve webdav /data/downloads \
     --pass "${WEBDAV_PASS}" \
     --vfs-cache-mode writes &
 
+# 给内部服务一点点启动时间
+sleep 3
+
 # ==========================================
 # 4. 启动 Caddy (前台运行，接管对外流量)
 # ==========================================
