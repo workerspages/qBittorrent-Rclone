@@ -23,6 +23,7 @@ chmod -R 777 /data
 
 QBT_CONFIG_FILE="/data/config/qBittorrent/config/qBittorrent.conf"
 
+# 自动检测并删除由于缺少反斜杠导致的错误配置文件
 if grep -q "WebUIPassword" "$QBT_CONFIG_FILE" 2>/dev/null; then
     echo "Detected corrupted config. Resetting..."
     rm -f "$QBT_CONFIG_FILE"
@@ -33,15 +34,16 @@ fi
 # ==========================================
 if [ ! -f "$QBT_CONFIG_FILE" ]; then
     echo "Creating default qBittorrent configuration..."
+    # 这里的反斜杠已经全部加倍，防止被 bash 吞噬
     cat <<EOF > "$QBT_CONFIG_FILE"
 [BitTorrent]
-Session\DefaultSavePath=/data/downloads
+Session\\DefaultSavePath=/data/downloads
 
 [Preferences]
-Downloads\SavePath=/data/downloads
-WebUI\Port=${QBT_INTERNAL_PORT}
-WebUI\Username=${CURRENT_USER}
-WebUI\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8O1QdXg2lfi5P1hGWe1Z2A==)"
+Downloads\\SavePath=/data/downloads
+WebUI\\Port=${QBT_INTERNAL_PORT}
+WebUI\\Username=${CURRENT_USER}
+WebUI\\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8O1QdXg2lfi5P1hGWe1Z2A==)"
 EOF
     echo "Initial credentials set to: ${CURRENT_USER} / adminadmin"
 else
@@ -86,7 +88,6 @@ echo "Starting qBittorrent Enhanced Edition (Background)..."
 qbittorrent-nox --profile="/data/config" &
 
 echo "Starting WebDAV on internal port ${WEBDAV_INTERNAL_PORT} (Background)..."
-# 注意：加入了 --baseurl /webdav 确保客户端能正确解析路径
 rclone serve webdav /data/downloads \
     --addr 127.0.0.1:${WEBDAV_INTERNAL_PORT} \
     --baseurl /webdav \
