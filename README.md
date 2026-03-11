@@ -128,16 +128,6 @@ rclone move -Pv paas-webdav:/ "Z:\下载目录\" --delete-empty-src-dirs --trans
 
 ---
 
-## 🛠️ GitHub Actions 自动化构建设置
-
-Fork 或克隆此仓库后：
-
-1. 前往 GitHub 仓库的 **Settings -> Secrets and variables -> Actions**。
-2. 添加 `DOCKER_USERNAME`（您的 Docker Hub 账号）。
-3. 添加 `DOCKER_PASSWORD`（您的 Docker Hub Access Token）。
-4. 推送到 `main` 分支即可自动构建并发布。
-
----
 ## 本地 `rclone` 的配置
 ```
 Option url.
