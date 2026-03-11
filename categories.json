@@ -1,5 +1,8 @@
 {
-    "AV": {
+    "驱动程序": {
         "save_path": "/data/downloads/ok/av"
+    },
+    "电影": {
+        "save_path": "/data/downloads/ok/movie"
     }
 }
