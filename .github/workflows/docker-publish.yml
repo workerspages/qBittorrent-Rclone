@@ -9,7 +9,7 @@ on:
 
 env:
   # 你想在 Docker Hub 和 GHCR 上使用的镜像名称
-  IMAGE_NAME: qbittorrent-ee-rclone
+  IMAGE_NAME: qbittorrent-rclone
 
 jobs:
   build-and-push:
