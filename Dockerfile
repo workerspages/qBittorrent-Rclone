@@ -18,10 +18,11 @@ RUN apk update && \
     apk del jq && \
     rm -rf /tmp/qbittorrent /var/cache/apk/*
 
-# 创建所需的数据目录
-RUN mkdir -p /data/downloads /data/config/qBittorrent/config /data/rclone
+# 创建所需的数据目录及默认配置目录
+RUN mkdir -p /data/downloads /data/config/qBittorrent/config /data/rclone /defaults
 
-# 复制启动脚本并赋予执行权限
+# 复制默认配置文件和启动脚本并赋予执行权限
+COPY qBittorrent.conf /defaults/qBittorrent.conf
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
