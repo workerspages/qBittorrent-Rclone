@@ -128,6 +128,11 @@ fi
 CADDY_CONFIG="/tmp/Caddyfile"
 echo "Generating Caddy routing on public port ${PUBLIC_PORT}..."
 cat <<EOF > "$CADDY_CONFIG"
+{
+    log {
+        level ERROR
+    }
+}
 :${PUBLIC_PORT} {
     handle /webdav/* {
         reverse_proxy 127.0.0.1:${WEBDAV_INTERNAL_PORT}
