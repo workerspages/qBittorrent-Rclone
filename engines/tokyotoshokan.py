@@ -21,9 +21,11 @@ class tokyotoshokan(object):
     global page_count
     page_count = 1
 
+    name = 'Tokyo Toshokan'
+    supported_categories = {'all': '0', 'anime': '1', 'games': '14'}
+
     def __init__(self):
-        self.name = 'Tokyo Toshokan'
-        self.supported_categories = {'all': '0', 'anime': '1', 'games': '14' }
+        pass
         #self.supported_categories = {'all': '0', 'anime': '1', 'anime(non-english)': '10',
         #                        'manga': '3', 'drama': '8', 'music': '2',
         #                        'music video': '9', 'raw': '7', 'hentai': '4',
