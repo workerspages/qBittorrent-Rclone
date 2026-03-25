@@ -5,6 +5,9 @@
     "驱动程序/上门安装": {
         "save_path": "/data/downloads/ok/驱动程序/上门安装"
     },
+    "驱动程序/自己安装": {
+        "save_path": "/data/downloads/ok/驱动程序/自己安装"
+    },
     "影视": {
         "save_path": "/data/downloads/ok/影视"
     },
