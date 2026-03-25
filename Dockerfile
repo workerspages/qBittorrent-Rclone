@@ -21,9 +21,10 @@ RUN apk update && \
 # 创建所需的数据目录及默认配置目录
 RUN mkdir -p /data/downloads /data/config/qBittorrent/config /data/rclone /defaults
 
-# 复制默认配置文件、分类文件和启动脚本并赋予执行权限
+# 复制默认配置文件、分类文件、搜索引擎插件和启动脚本并赋予执行权限
 COPY qBittorrent.conf /defaults/qBittorrent.conf
 COPY categories.json /defaults/categories.json
+COPY engines /defaults/engines
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

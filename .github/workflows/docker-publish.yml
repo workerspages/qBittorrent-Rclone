@@ -56,5 +56,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # 针对常见 PaaS 平台，构建 amd64 架构即可。若需 arm64，可在此处添加 "linux/arm64"
-          platforms: linux/amd64
+          # 针对常见 PaaS 平台，构建 amd64 和 arm64 双架构
+          platforms: linux/amd64,linux/arm64

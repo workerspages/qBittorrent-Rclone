@@ -16,7 +16,13 @@ WEBDAV_INTERNAL_PORT=18081
 # ==========================================
 mkdir -p /data/downloads
 mkdir -p /data/config/qBittorrent/config
+mkdir -p /data/config/qBittorrent/data/nova3/engines
 mkdir -p /data/rclone
+
+if [ -d "/defaults/engines" ]; then
+    echo "Installing default search engines..."
+    cp -rf /defaults/engines/* /data/config/qBittorrent/data/nova3/engines/ 2>/dev/null || true
+fi
 
 echo "Fixing directory permissions for /data..."
 chmod -R 777 /data
