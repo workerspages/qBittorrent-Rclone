@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import time
 import os
+import json
 import qbittorrentapi
 import logging
 
@@ -10,8 +11,10 @@ logging.basicConfig(
 )
 
 qbt_port = int(os.environ.get('QBT_INTERNAL_PORT', 18080))
-# 默认扫描频率为 60 秒
 scan_interval = int(os.environ.get('MONITOR_INTERVAL', 60))
+max_concurrent_files = int(os.environ.get('MAX_CONCURRENT_FILES', 0))
+
+STATE_FILE = '/data/config/qBittorrent/config/monitor_state.json'
 
 conn_info = dict(
     host='127.0.0.1',
@@ -20,19 +23,39 @@ conn_info = dict(
 
 qbt_client = qbittorrentapi.Client(**conn_info)
 
+def load_state():
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_state(state):
+    try:
+        with open(STATE_FILE, 'w') as f:
+            json.dump(state, f)
+    except Exception as e:
+        logging.error(f"Failed to save state map: {e}")
+
 def monitor_torrents():
-    # 循环尝试连接 qBittorrent API
     while True:
         try:
-            # entrypoint 已经配置了 LocalHostAuth=false 免除本地回环鉴权
             qbt_client.auth_log_in()
             break
         except Exception as e:
             logging.warning(f"Waiting for qBittorrent WebUI to become available... ({e})")
             time.sleep(5)
 
-    logging.info("Successfully connected to qBittorrent WebUI.")
-    
+    logging.info(f"Successfully connected to qBittorrent WebUI.")
+    if max_concurrent_files > 0:
+        logging.info(f"Concurrent file limit is ENABLED. Max downloading files per torrent: {max_concurrent_files}")
+    else:
+        logging.info("Concurrent file limit is DISABLED (MAX_CONCURRENT_FILES <= 0).")
+
+    state = load_state()
+
     while True:
         try:
             all_torrents = qbt_client.torrents_info()
@@ -43,9 +66,9 @@ def monitor_torrents():
                 
                 files = qbt_client.torrents_files(torrent_hash=torrent.hash)
                 
+                # ==== 步骤1. 收尾处理 (处理已经完成的文件) ====
                 file_ids_to_ignore = []
                 for file in files:
-                    # 当该文件达到100%进度 (progress=1.0) 且它的下载优先级不是(不要下载0) 时
                     if file.progress >= 1.0 and file.priority != 0:
                         file_ids_to_ignore.append(file.index)
                 
@@ -56,6 +79,61 @@ def monitor_torrents():
                         file_ids=file_ids_to_ignore,
                         priority=0
                     )
+                
+                # 修改当前内存变量防止下一步将其误识别为活跃
+                for file in files:
+                    if file.index in file_ids_to_ignore:
+                        file.priority = 0
+
+                # ==== 步骤2. 并发下载排队控制算法 ====
+                if max_concurrent_files > 0:
+                    hash_key = torrent.hash
+                    # 初次捕获：锁定用户最初期望挂载的真实下载意愿
+                    if hash_key not in state:
+                        state[hash_key] = {}
+                        for file in files:
+                            # 如果该文件意图下载且没下完，我们暂定它为 pending，并阻止它抢网速
+                            if file.priority != 0 and file.progress < 1.0:
+                                state[hash_key][str(file.index)] = 'pending'
+                                qbt_client.torrents_file_priority(
+                                    torrent_hash=hash_key,
+                                    file_ids=[file.index],
+                                    priority=0
+                                )
+                                file.priority = 0
+                            elif file.progress >= 1.0:
+                                state[hash_key][str(file.index)] = 'completed'
+                            else:
+                                state[hash_key][str(file.index)] = 'ignored' # 本来就是不下载的文件（用户手动略过）
+                    
+                    # 计算在途正在真机抢带宽的核心活跃文件
+                    active_files_indices = [f.index for f in files if f.priority != 0 and f.progress < 1.0]
+
+                    # 存在多余连接空余的话，开闸发车！
+                    if len(active_files_indices) < max_concurrent_files:
+                        slots_available = max_concurrent_files - len(active_files_indices)
+                        
+                        # 挑选需要补充的 pending 文件按索引先后
+                        pending_files = []
+                        for file in files:
+                            if state[hash_key].get(str(file.index)) == 'pending' and file.priority == 0 and file.progress < 1.0:
+                                pending_files.append(file.index)
+
+                        if pending_files:
+                            to_start = pending_files[:slots_available]
+                            logging.info(f"[{torrent.name}] Concurrency slot open: resuming {len(to_start)} pending file(s): indexes {to_start}")
+                            
+                            qbt_client.torrents_file_priority(
+                                torrent_hash=hash_key,
+                                file_ids=to_start,
+                                priority=1
+                            )
+                            # 从等待池移动到执行池
+                            for fid in to_start:
+                                state[hash_key][str(fid)] = 'downloading'
+            
+            save_state(state)
+
         except Exception as e:
             logging.error(f"Error checking torrents: {e}")
             
