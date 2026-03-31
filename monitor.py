@@ -17,11 +17,25 @@ max_concurrent_files = int(os.environ.get('MAX_CONCURRENT_FILES', 0))
 
 # 是否只下载视频文件的开关
 only_video_files = os.environ.get('ONLY_VIDEO_FILES', 'false').lower() == 'true'
-video_ext_str = os.environ.get('VIDEO_EXTENSIONS', '.mp4,.mkv,.avi,.rmvb,.flv,.mov,.wmv,.ts,.webm,.iso')
-video_extensions = tuple(ext.strip().lower() for ext in video_ext_str.split(',') if ext.strip())
 
-# 新增：磁盘剩余空间保护阈值（GB）。设为 0 则关闭此功能。
-# 你的服务器是100G，占用90G也就是剩余10G，这里默认设为 10.0
+# 将你提供的最全视频格式列表作为默认值
+video_ext_str = os.environ.get(
+    'VIDEO_EXTENSIONS', 
+    'mp4,mkv,avi,wmv,mov,ts,rmvb,webm,flv,f4v,m4v,mpg,mpeg,vob,m2ts,mts,3gp,rm,asf,ogv,mxf,dat'
+)
+
+# 增强版解析逻辑：自动处理大小写，并自动为没有加点(.)的后缀加上点，完美兼容用户输入的字符串
+video_extensions_list = []
+for ext in video_ext_str.split(','):
+    ext = ext.strip().lower()
+    if ext:
+        if not ext.startswith('.'):
+            ext = '.' + ext
+        if ext not in video_extensions_list:
+            video_extensions_list.append(ext)
+video_extensions = tuple(video_extensions_list)
+
+# 磁盘剩余空间保护阈值（GB）。设为 0 则关闭此功能。
 min_free_space_gb = float(os.environ.get('MIN_FREE_SPACE_GB', 10.0))
 DOWNLOAD_DIR = '/data/downloads'
 
@@ -67,7 +81,7 @@ def monitor_torrents():
         logging.info("Concurrent file limit is DISABLED.")
 
     if only_video_files:
-        logging.info(f"Video-only download mode is ENABLED. Allowed extensions: {video_extensions}")
+        logging.info(f"Video-only download mode is ENABLED. Allowed extensions: {','.join(video_extensions)}")
         
     if min_free_space_gb > 0:
         logging.info(f"Disk space protection is ENABLED. Will pause downloads if free space drops below {min_free_space_gb} GB.")
