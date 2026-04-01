@@ -142,11 +142,27 @@ fi
 # 自动解除 IP 封禁
 sed -i '/BannedIPs=/d' "$QBT_CONFIG_FILE"
 
-# 配置免除本地地址密码验证，供后台 API 调用使用
-sed -i "s/^WebUI\\\\LocalHostAuth=.*/WebUI\\\\LocalHostAuth=false/g" "$QBT_CONFIG_FILE"
+# === 开始应用你提出的 IP 白名单策略 ===
+
+# 1. 强制关闭“跳过本地主机验证”，确保本地主机验证机制激活（防止裸奔）
+sed -i "s/^WebUI\\\\LocalHostAuth=.*/WebUI\\\\LocalHostAuth=true/g" "$QBT_CONFIG_FILE"
 if ! grep -q "^WebUI\\\\LocalHostAuth=" "$QBT_CONFIG_FILE"; then
-    sed -i "/\[Preferences\]/a WebUI\\\\LocalHostAuth=false" "$QBT_CONFIG_FILE"
+    sed -i "/\[Preferences\]/a WebUI\\\\LocalHostAuth=true" "$QBT_CONFIG_FILE"
 fi
+
+# 2. 注入 127.0.0.1/32 到 IP 子网白名单中
+sed -i "s|^WebUI\\\\AuthSubnetWhitelist=.*|WebUI\\\\AuthSubnetWhitelist=127.0.0.1/32|g" "$QBT_CONFIG_FILE"
+if ! grep -q "^WebUI\\\\AuthSubnetWhitelist=" "$QBT_CONFIG_FILE"; then
+    sed -i "/\[Preferences\]/a WebUI\\\\AuthSubnetWhitelist=127.0.0.1/32" "$QBT_CONFIG_FILE"
+fi
+
+# 3. 启用 IP 子网白名单功能
+sed -i "s/^WebUI\\\\AuthSubnetWhitelistEnabled=.*/WebUI\\\\AuthSubnetWhitelistEnabled=true/g" "$QBT_CONFIG_FILE"
+if ! grep -q "^WebUI\\\\AuthSubnetWhitelistEnabled=" "$QBT_CONFIG_FILE"; then
+    sed -i "/\[Preferences\]/a WebUI\\\\AuthSubnetWhitelistEnabled=true" "$QBT_CONFIG_FILE"
+fi
+
+# =====================================
 
 # 动态注入或更新外部程序执行 (修改为传入 %N 和保存根路径组合的 %D/%N 以供 rclone 获取全路径)
 # qBittorrent 变量： %N (名称)  %D (保存路径，如果是多文件则是父目录，单文件则是文件所在目录)
