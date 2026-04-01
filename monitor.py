@@ -142,6 +142,14 @@ def monitor_torrents():
                     qbt_client.torrents_resume(torrent_hashes=torrent.hash)
                     continue
 
+                # ==== 步骤 0.8 自动开启“按顺序下载” ====
+                if getattr(torrent, 'seq_dl', False) is False and torrent.progress < 1.0:
+                    try:
+                        qbt_client.torrents_toggle_sequential_download(torrent_hashes=torrent.hash)
+                        logging.info(f"[{torrent.name}] 已自动开启“按顺序下载” (Auto-enabled sequential download).")
+                    except Exception as e:
+                        logging.error(f"Failed to toggle sequential download for {torrent.name}: {e}")
+
                 if torrent.progress >= 1.0:
                     continue
                 if torrent.state == 'metaDL':
