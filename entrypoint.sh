@@ -142,24 +142,18 @@ fi
 # 自动解除 IP 封禁
 sed -i '/BannedIPs=/d' "$QBT_CONFIG_FILE"
 
-# === 开始应用你提出的 IP 白名单策略 ===
+# === 安全修复：全面强制开启身份验证，防止 Caddy 反代导致公网免密 ===
 
-# 1. 强制关闭“跳过本地主机验证”，确保本地主机验证机制激活（防止裸奔）
+# 1. 强制要求本地地址进行密码验证
 sed -i "s/^WebUI\\\\LocalHostAuth=.*/WebUI\\\\LocalHostAuth=true/g" "$QBT_CONFIG_FILE"
 if ! grep -q "^WebUI\\\\LocalHostAuth=" "$QBT_CONFIG_FILE"; then
     sed -i "/\[Preferences\]/a WebUI\\\\LocalHostAuth=true" "$QBT_CONFIG_FILE"
 fi
 
-# 2. 注入 127.0.0.1/32 到 IP 子网白名单中
-sed -i "s|^WebUI\\\\AuthSubnetWhitelist=.*|WebUI\\\\AuthSubnetWhitelist=127.0.0.1/32|g" "$QBT_CONFIG_FILE"
-if ! grep -q "^WebUI\\\\AuthSubnetWhitelist=" "$QBT_CONFIG_FILE"; then
-    sed -i "/\[Preferences\]/a WebUI\\\\AuthSubnetWhitelist=127.0.0.1/32" "$QBT_CONFIG_FILE"
-fi
-
-# 3. 启用 IP 子网白名单功能
-sed -i "s/^WebUI\\\\AuthSubnetWhitelistEnabled=.*/WebUI\\\\AuthSubnetWhitelistEnabled=true/g" "$QBT_CONFIG_FILE"
+# 2. 强制关闭 IP 子网白名单功能
+sed -i "s/^WebUI\\\\AuthSubnetWhitelistEnabled=.*/WebUI\\\\AuthSubnetWhitelistEnabled=false/g" "$QBT_CONFIG_FILE"
 if ! grep -q "^WebUI\\\\AuthSubnetWhitelistEnabled=" "$QBT_CONFIG_FILE"; then
-    sed -i "/\[Preferences\]/a WebUI\\\\AuthSubnetWhitelistEnabled=true" "$QBT_CONFIG_FILE"
+    sed -i "/\[Preferences\]/a WebUI\\\\AuthSubnetWhitelistEnabled=false" "$QBT_CONFIG_FILE"
 fi
 
 # =====================================
