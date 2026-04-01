@@ -28,7 +28,7 @@
 | 变量名 | 默认值 | 说明 |
 | :--- | :--- | :--- |
 | `QBT_USER` | `admin` | qBittorrent WebUI 面板的登录用户名。 |
-| `QBT_PASS` | `adminadmin` | 将 `QBT_PASS` 的值更新为你刚刚在 WebUI 中修改的新明文密码(注意，这密码是给qBittorrent API登录用的)。 |
+| `QBT_PASS` | `adminadmin` | 将 `QBT_PASS` 的值更新为你刚刚在 WebUI 中修改的新明文密码(注意，这密码是给`qBittorrent API`登录用的)。 |
 | `PORT` | `8080` | 对外暴露的唯一公网 HTTP 端口。大部分 PaaS 会自动注入此变量。 |
 | `WEBDAV_USER` | `admin` | WebDAV 服务的登录用户名，**强烈建议修改**。 |
 | `WEBDAV_PASS` | `password` | WebDAV 服务的登录密码，**强烈建议修改**。 |
