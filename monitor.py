@@ -125,7 +125,29 @@ def monitor_torrents():
             time.sleep(5)
 
     logging.info(f"Successfully connected to qBittorrent WebUI.")
-    
+
+    # ===== 关键修复：通过 WebAPI 确保 AutoRun (OnTorrentFinished) 已启用 =====
+    # entrypoint.sh 的 sed 注入可能被 qBittorrent 运行时覆盖，导致通知不触发
+    # 通过 WebAPI 设置是最可靠的方式，因为它直接操作 qBittorrent 的运行时状态
+    notify_script = '/data/config/qBittorrent/config/notify.sh'
+    autorun_cmd = f'sh {notify_script} "%N" "%F"'
+    try:
+        current_prefs = qbt_client.app_preferences()
+        autorun_enabled = current_prefs.get('autorun_on_torrent_finished_enabled', False)
+        autorun_program = current_prefs.get('autorun_program', '')
+        
+        if not autorun_enabled or autorun_program != autorun_cmd:
+            logging.info(f"AutoRun not configured correctly (enabled={autorun_enabled}, program='{autorun_program}'). Fixing via WebAPI...")
+            qbt_client.app_set_preferences(prefs={
+                'autorun_on_torrent_finished_enabled': True,
+                'autorun_program': autorun_cmd
+            })
+            logging.info(f"AutoRun configured: OnTorrentFinished → {autorun_cmd}")
+        else:
+            logging.info("AutoRun (OnTorrentFinished) is already correctly configured.")
+    except Exception as e:
+        logging.error(f"Failed to configure AutoRun via WebAPI: {e}")
+
     if max_concurrent_files > 0:
         logging.info(f"Concurrent file limit is ENABLED: {max_concurrent_files}")
     if only_video_files:
