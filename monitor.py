@@ -7,6 +7,8 @@ import logging
 import shutil
 import base64
 import subprocess
+import urllib.request
+import urllib.parse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,6 +58,34 @@ if rclone_config_b64:
         logging.error(f"Failed to decode RCLONE_CONFIG_BASE64: {e}")
 
 STATE_FILE = '/data/config/qBittorrent/config/monitor_state.json'
+
+# ================= Bark 通知配置（备用通道） =================
+bark_server = os.environ.get('BARK_SERVER', '').rstrip('/')
+bark_key = os.environ.get('BARK_KEY', '')
+
+def send_bark_notification(title: str, body: str):
+    """通过 Bark V2 JSON API 发送推送通知（monitor 内部备用通道）"""
+    if not bark_server or not bark_key:
+        return
+    try:
+        payload = json.dumps({
+            'device_key': bark_key,
+            'title': title,
+            'body': body
+        }).encode('utf-8')
+        req = urllib.request.Request(
+            f'{bark_server}/push',
+            data=payload,
+            headers={'Content-Type': 'application/json; charset=utf-8'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 200:
+                logging.info(f"Bark notification sent: {title}")
+            else:
+                logging.warning(f"Bark notification response: HTTP {resp.status}")
+    except Exception as e:
+        logging.error(f"Failed to send Bark notification: {e}")
 
 # ================= 增加认证信息，通过环境变量注入密码 =================
 qbt_user = os.environ.get('QBT_USER', 'admin')
@@ -151,6 +181,15 @@ def monitor_torrents():
                         logging.error(f"Failed to toggle sequential download for {torrent.name}: {e}")
 
                 if torrent.progress >= 1.0:
+                    # 备用通知：如果这个 torrent 之前不在 completed 集合中，说明是新完成的
+                    hash_key = torrent.hash
+                    if hash_key not in state.get('_completed_torrents', []):
+                        logging.info(f"[{torrent.name}] Torrent newly completed (progress=1.0). Sending backup notification...")
+                        send_bark_notification('下载完成', f'{torrent.name} 已下载完毕！')
+                        if '_completed_torrents' not in state:
+                            state['_completed_torrents'] = []
+                        state['_completed_torrents'].append(hash_key)
+                        save_state(state)
                     continue
                 if torrent.state == 'metaDL':
                     continue

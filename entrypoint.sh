@@ -68,18 +68,41 @@ TORRENT_PATH="$2"
 LOG_FILE="/data/downloads/automation.log"
 
 echo "======================================" >> "$LOG_FILE"
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Task Finished: ${TORRENT_NAME}" >> "$LOG_FILE"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - notify.sh triggered" >> "$LOG_FILE"
+echo "  TORRENT_NAME: ${TORRENT_NAME}" >> "$LOG_FILE"
+echo "  TORRENT_PATH: ${TORRENT_PATH}" >> "$LOG_FILE"
+echo "  BARK_SERVER:  ${BARK_SERVER:-(empty)}" >> "$LOG_FILE"
+echo "  BARK_KEY:     ${BARK_KEY:+***set***}${BARK_KEY:-empty}" >> "$LOG_FILE"
 
-# --- 步骤 1: 发送 Bark 通知 (如有) ---
-if [ -n "$BARK_SERVER" ] && [ -n "$BARK_KEY" ]; then
-    if command -v curl > /dev/null 2>&1; then
-        SERVER=$(echo "$BARK_SERVER" | sed 's/\/$//')
-        curl -k -s -X POST "${SERVER}/${BARK_KEY}" \
-             --data-urlencode "title=下载完成" \
-             --data-urlencode "body=${TORRENT_NAME} 已下载完毕！" > /dev/null 2>&1
-        echo "Bark notification sent." >> "$LOG_FILE"
+# --- Bark 通知发送函数 ---
+send_bark() {
+    NOTIFY_TITLE="$1"
+    NOTIFY_BODY="$2"
+    if [ -z "$BARK_SERVER" ] || [ -z "$BARK_KEY" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Bark not configured, skipping notification." >> "$LOG_FILE"
+        return 0
     fi
-fi
+    if ! command -v curl > /dev/null 2>&1; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - ERROR: curl not found, cannot send Bark notification." >> "$LOG_FILE"
+        return 1
+    fi
+    SERVER=$(echo "$BARK_SERVER" | sed 's/\/$//')
+    # 使用 Bark V2 JSON API（/push 端点），兼容性最好
+    BARK_RESPONSE=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "${SERVER}/push" \
+         -H 'Content-Type: application/json; charset=utf-8' \
+         -d "{\"device_key\":\"${BARK_KEY}\",\"title\":\"${NOTIFY_TITLE}\",\"body\":\"${NOTIFY_BODY}\"}" 2>&1)
+    BARK_HTTP_CODE=$(echo "$BARK_RESPONSE" | grep 'HTTP_CODE:' | sed 's/HTTP_CODE://')
+    BARK_BODY=$(echo "$BARK_RESPONSE" | grep -v 'HTTP_CODE:')
+    if [ "$BARK_HTTP_CODE" = "200" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Bark notification sent OK (HTTP $BARK_HTTP_CODE)." >> "$LOG_FILE"
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - WARNING: Bark notification may have failed (HTTP $BARK_HTTP_CODE)." >> "$LOG_FILE"
+        echo "  Response: $BARK_BODY" >> "$LOG_FILE"
+    fi
+}
+
+# --- 步骤 1: 发送下载完成通知 ---
+send_bark "下载完成" "${TORRENT_NAME} 已下载完毕！"
 
 # --- 步骤 2: Rclone 自动上传 (如有) ---
 if [ -n "$RCLONE_DESTINATION" ]; then
@@ -96,15 +119,10 @@ if [ -n "$RCLONE_DESTINATION" ]; then
 
     if [ $RCLONE_EXIT_CODE -eq 0 ]; then
         echo "$(date '+%Y-%m-%d %H:%M:%S') - Rclone upload successful." >> "$LOG_FILE"
-        # 成功后再次发送通知
-        if [ -n "$BARK_SERVER" ] && [ -n "$BARK_KEY" ] && command -v curl > /dev/null 2>&1; then
-            SERVER=$(echo "$BARK_SERVER" | sed 's/\/$//')
-            curl -k -s -X POST "${SERVER}/${BARK_KEY}" \
-                 --data-urlencode "title=上传网盘成功" \
-                 --data-urlencode "body=${TORRENT_NAME} 已同步至 ${RCLONE_DESTINATION}" > /dev/null 2>&1
-        fi
+        send_bark "上传网盘成功" "${TORRENT_NAME} 已同步至 ${RCLONE_DESTINATION}"
     else
         echo "$(date '+%Y-%m-%d %H:%M:%S') - ERROR: Rclone upload failed with code ${RCLONE_EXIT_CODE}." >> "$LOG_FILE"
+        send_bark "上传网盘失败" "${TORRENT_NAME} 上传失败，错误码: ${RCLONE_EXIT_CODE}"
     fi
 fi
 EOF
