@@ -177,31 +177,23 @@ fi
 # =====================================
 
 # ==========================================
-# 动态注入或更新 torrent 完成时运行 的外部程序 (适配 qBittorrent 4.6.0+ 最新版)
+# 动态注入或更新 torrent 完成时运行 的外部程序 (终极防弹版)
 # ==========================================
 if grep -q "^\[AutoRun\]" "$QBT_CONFIG_FILE"; then
-    # 1. 彻底清理被废弃的旧版变量，防止干扰
+    # 1. 彻底清理被原脚本作者带偏的假字段
+    sed -i '/^OnTorrentFinished/d' "$QBT_CONFIG_FILE"
+    # 2. 彻底清理现有的相关小写/大写字段，防止残留
     sed -i '/^enabled=/d' "$QBT_CONFIG_FILE"
     sed -i '/^program=/d' "$QBT_CONFIG_FILE"
     sed -i '/^Enabled=/d' "$QBT_CONFIG_FILE"
     sed -i '/^Program=/d' "$QBT_CONFIG_FILE"
     
-    # 2. 处理 Program 字段 (写入带有转义双引号的参数)
-    if grep -q "^OnTorrentFinished\\\\Program=" "$QBT_CONFIG_FILE"; then
-        sed -i "s|^OnTorrentFinished\\\\Program=.*|OnTorrentFinished\\\\Program=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"|g" "$QBT_CONFIG_FILE"
-    else
-        sed -i "/\[AutoRun\]/a OnTorrentFinished\\\\Program=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"" "$QBT_CONFIG_FILE"
-    fi
-
-    # 3. 处理 Enabled 字段 (必须设置为 true)
-    if grep -q "^OnTorrentFinished\\\\Enabled=" "$QBT_CONFIG_FILE"; then
-        sed -i "s|^OnTorrentFinished\\\\Enabled=.*|OnTorrentFinished\\\\Enabled=true|g" "$QBT_CONFIG_FILE"
-    else
-        sed -i "/\[AutoRun\]/a OnTorrentFinished\\\\Enabled=true" "$QBT_CONFIG_FILE"
-    fi
+    # 3. 暴力且安全地将绝对正确的参数直接追加到[AutoRun] 节点下方
+    sed -i "/^\[AutoRun\]/a program=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"" "$QBT_CONFIG_FILE"
+    sed -i "/^\[AutoRun\]/a enabled=true" "$QBT_CONFIG_FILE"
 else
-    # 如果配置文件连 [AutoRun] 节点都没有，则全新追加
-    echo -e "\n[AutoRun]\nOnTorrentFinished\\\\Enabled=true\nOnTorrentFinished\\\\Program=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"" >> "$QBT_CONFIG_FILE"
+    # 如果配置文件里连 [AutoRun] 都没有，直接新建
+    echo -e "\n[AutoRun]\nenabled=true\nprogram=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"" >> "$QBT_CONFIG_FILE"
 fi
 
 # ==========================================
