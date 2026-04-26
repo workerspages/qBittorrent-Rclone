@@ -174,10 +174,11 @@ if ! grep -q "^WebUI\\\\AuthSubnetWhitelistEnabled=" "$QBT_CONFIG_FILE"; then
     sed -i "/\[Preferences\]/a WebUI\\\\AuthSubnetWhitelistEnabled=false" "$QBT_CONFIG_FILE"
 fi
 
-# =====================================
+# ==========================================
 
 # ==========================================
 # 动态注入或更新 torrent 完成时运行 的外部程序 (终极防弹版)
+# 也可以删除以下内容后在 qBittorrent.conf 配置好 AutoRun 版块
 # ==========================================
 if grep -q "^\[AutoRun\]" "$QBT_CONFIG_FILE"; then
     # 1. 彻底清理被原脚本作者带偏的假字段
