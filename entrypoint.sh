@@ -176,23 +176,32 @@ fi
 
 # =====================================
 
-# 动态注入或更新 torrent 完成时运行 的外部程序
+# ==========================================
+# 动态注入或更新 torrent 完成时运行 的外部程序 (适配 qBittorrent 4.6.0+ 最新版)
+# ==========================================
 if grep -q "^\[AutoRun\]" "$QBT_CONFIG_FILE"; then
-    # 清理掉错误的 OnTorrentFinished 字段
-    sed -i '/^OnTorrentFinished/d' "$QBT_CONFIG_FILE"
-    # 清理大写的遗留字段
-    sed -i '/^Program=.*/d' "$QBT_CONFIG_FILE"
-    sed -i '/^Enabled=.*/d' "$QBT_CONFIG_FILE"
+    # 1. 彻底清理被废弃的旧版变量，防止干扰
+    sed -i '/^enabled=/d' "$QBT_CONFIG_FILE"
+    sed -i '/^program=/d' "$QBT_CONFIG_FILE"
+    sed -i '/^Enabled=/d' "$QBT_CONFIG_FILE"
+    sed -i '/^Program=/d' "$QBT_CONFIG_FILE"
     
-    # 正确注入小写的 enabled 和 program (对应"完成时运行")
-    if grep -q "^program=" "$QBT_CONFIG_FILE"; then
-        sed -i "s|^program=.*|program=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"|g" "$QBT_CONFIG_FILE"
-        sed -i "s/^enabled=false/enabled=true/g" "$QBT_CONFIG_FILE"
+    # 2. 处理 Program 字段 (写入带有转义双引号的参数)
+    if grep -q "^OnTorrentFinished\\\\Program=" "$QBT_CONFIG_FILE"; then
+        sed -i "s|^OnTorrentFinished\\\\Program=.*|OnTorrentFinished\\\\Program=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"|g" "$QBT_CONFIG_FILE"
     else
-        sed -i "/\[AutoRun\]/a program=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"\nenabled=true" "$QBT_CONFIG_FILE"
+        sed -i "/\[AutoRun\]/a OnTorrentFinished\\\\Program=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"" "$QBT_CONFIG_FILE"
+    fi
+
+    # 3. 处理 Enabled 字段 (必须设置为 true)
+    if grep -q "^OnTorrentFinished\\\\Enabled=" "$QBT_CONFIG_FILE"; then
+        sed -i "s|^OnTorrentFinished\\\\Enabled=.*|OnTorrentFinished\\\\Enabled=true|g" "$QBT_CONFIG_FILE"
+    else
+        sed -i "/\[AutoRun\]/a OnTorrentFinished\\\\Enabled=true" "$QBT_CONFIG_FILE"
     fi
 else
-    echo -e "\n[AutoRun]\nenabled=true\nprogram=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"" >> "$QBT_CONFIG_FILE"
+    # 如果配置文件连 [AutoRun] 节点都没有，则全新追加
+    echo -e "\n[AutoRun]\nOnTorrentFinished\\\\Enabled=true\nOnTorrentFinished\\\\Program=sh ${NOTIFY_SCRIPT} \\\"%N\\\" \\\"%F\\\"" >> "$QBT_CONFIG_FILE"
 fi
 
 # ==========================================
