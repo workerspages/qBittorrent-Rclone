@@ -58,6 +58,7 @@ BARK_SERVER="${BARK_SERVER}"
 BARK_KEY="${BARK_KEY}"
 RCLONE_DESTINATION="${RCLONE_DESTINATION}"
 RCLONE_UPLOAD_MODE="${RCLONE_UPLOAD_MODE:-copy}"
+QBT_INTERNAL_PORT="${QBT_INTERNAL_PORT}"
 EOF
 
 # 1.3 追加核心运行逻辑（通知 + Rclone 传输）
@@ -73,6 +74,45 @@ echo "  TORRENT_NAME: ${TORRENT_NAME}" >> "$LOG_FILE"
 echo "  TORRENT_PATH: ${TORRENT_PATH}" >> "$LOG_FILE"
 echo "  BARK_SERVER:  ${BARK_SERVER:-(empty)}" >> "$LOG_FILE"
 echo "  BARK_KEY:     ${BARK_KEY:+***set***}${BARK_KEY:-empty}" >> "$LOG_FILE"
+
+# --- 验证种子是否真正完成（防御性检查） ---
+# 通过 qBittorrent WebAPI 按名称搜索种子，确认 progress=1 才发送通知
+is_truly_complete() {
+    QBT_PORT="${QBT_INTERNAL_PORT:-18080}"
+    if ! command -v curl > /dev/null 2>&1; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - WARNING: curl not available, skipping completion verification." >> "$LOG_FILE"
+        return 0  # 无法验证时默认放行
+    fi
+    # 尝试获取 SID cookie 进行认证
+    SID_COOKIE=$(curl -k -s -c - -X POST "http://127.0.0.1:${QBT_PORT}/api/v2/auth/login" \
+        -d "username=admin&password=adminadmin" 2>/dev/null | grep -i 'SID' | awk '{print $NF}')
+    # 搜索指定名称的种子
+    TORRENT_INFO=$(curl -k -s -b "SID=${SID_COOKIE}" \
+        "http://127.0.0.1:${QBT_PORT}/api/v2/torrents/info" 2>/dev/null)
+    if [ -z "$TORRENT_INFO" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - WARNING: Cannot query qBittorrent API, skipping verification." >> "$LOG_FILE"
+        return 0  # 无法验证时默认放行
+    fi
+    # 在返回的 JSON 中查找该种子的 progress 值
+    # 使用 grep + sed 简单解析 JSON（避免依赖 jq）
+    PROGRESS=$(echo "$TORRENT_INFO" | tr ',' '\n' | tr '{' '\n' | \
+        grep -A 20 "\"name\":\"${TORRENT_NAME}\"" | grep '"progress"' | \
+        head -1 | sed 's/.*"progress":\([0-9.]*\).*/\1/')
+    if [ -z "$PROGRESS" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - WARNING: Cannot find torrent progress for '${TORRENT_NAME}', allowing notification." >> "$LOG_FILE"
+        return 0
+    fi
+    # 检查 progress 是否为 1（完成）
+    # 使用 awk 进行浮点数比较
+    IS_DONE=$(echo "$PROGRESS" | awk '{if ($1 >= 0.9999) print "yes"; else print "no"}')
+    if [ "$IS_DONE" = "yes" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Verified: torrent progress=${PROGRESS}, truly complete." >> "$LOG_FILE"
+        return 0
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - BLOCKED: torrent progress=${PROGRESS}, NOT truly complete. Skipping download notification." >> "$LOG_FILE"
+        return 1
+    fi
+}
 
 # --- Bark 通知发送函数 ---
 send_bark() {
@@ -101,8 +141,12 @@ send_bark() {
     fi
 }
 
-# --- 步骤 1: 发送下载完成通知 ---
-send_bark "下载完成" "${TORRENT_NAME} 已下载完毕！"
+# --- 步骤 1: 验证后发送下载完成通知 ---
+if is_truly_complete; then
+    send_bark "下载完成" "${TORRENT_NAME} 已下载完毕！"
+else
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Download notification suppressed (not truly complete)." >> "$LOG_FILE"
+fi
 
 # --- 步骤 2: Rclone 自动上传 (如有) ---
 if [ -n "$RCLONE_DESTINATION" ]; then

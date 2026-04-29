@@ -203,15 +203,24 @@ def monitor_torrents():
                         logging.error(f"Failed to toggle sequential download for {torrent.name}: {e}")
 
                 if torrent.progress >= 1.0:
-                    # 备用通知：如果这个 torrent 之前不在 completed 集合中，说明是新完成的
+                    # 备用通知：验证种子是否真正完成（防止并发控制禁用文件导致的假完成）
                     hash_key = torrent.hash
-                    if hash_key not in state.get('_completed_torrents', []):
-                        logging.info(f"[{torrent.name}] Torrent newly completed (progress=1.0). Sending backup notification...")
+                    truly_complete = True
+                    if max_concurrent_files > 0 and hash_key in state:
+                        # 当并发控制启用时，检查是否还有 pending/downloading 状态的文件
+                        for file_status in state[hash_key].values():
+                            if file_status in ('pending', 'downloading'):
+                                truly_complete = False
+                                break
+                    if truly_complete and hash_key not in state.get('_completed_torrents', []):
+                        logging.info(f"[{torrent.name}] Torrent truly completed (progress=1.0). Sending backup notification...")
                         send_bark_notification('下载完成', f'{torrent.name} 已下载完毕！')
                         if '_completed_torrents' not in state:
                             state['_completed_torrents'] = []
                         state['_completed_torrents'].append(hash_key)
                         save_state(state)
+                    elif not truly_complete:
+                        logging.debug(f"[{torrent.name}] progress=1.0 but has pending files, skipping notification.")
                     continue
                 if torrent.state == 'metaDL':
                     continue
@@ -222,27 +231,60 @@ def monitor_torrents():
                 # 初始化该种子的排队状态
                 if hash_key not in state:
                     state[hash_key] = {}
+                    pending_file_indices = []
                     for file in files:
                         file_id_str = str(file.index)
-                        if file.priority != 0 and file.progress < 1.0:
-                            state[hash_key][file_id_str] = 'pending'
-                            qbt_client.torrents_file_priority(torrent_hash=hash_key, file_ids=[file.index], priority=0)
-                            file.priority = 0
-                        elif file.progress >= 1.0:
+                        if file.progress >= 1.0:
                             state[hash_key][file_id_str] = 'completed'
+                        elif file.priority != 0:
+                            state[hash_key][file_id_str] = 'pending'
+                            pending_file_indices.append(file.index)
                         else:
                             state[hash_key][file_id_str] = 'ignored'
 
-                # ==== 步骤1. 收尾处理与优先级干预 ====
-                file_ids_to_ignore = []
-                for file in files:
-                    if file.progress >= 1.0 and file.priority != 0:
-                        file_ids_to_ignore.append(file.index)
-                if file_ids_to_ignore:
-                    qbt_client.torrents_file_priority(torrent_hash=torrent.hash, file_ids=file_ids_to_ignore, priority=0)
-                for file in files:
-                    if file.index in file_ids_to_ignore:
-                        file.priority = 0
+                    # 仅在并发控制启用时操作文件优先级
+                    if max_concurrent_files > 0 and pending_file_indices:
+                        # 保留前 N 个文件为启用状态，禁用其余文件
+                        files_to_enable = pending_file_indices[:max_concurrent_files]
+                        files_to_disable = pending_file_indices[max_concurrent_files:]
+                        for idx in files_to_enable:
+                            state[hash_key][str(idx)] = 'downloading'
+                        if files_to_disable:
+                            qbt_client.torrents_file_priority(
+                                torrent_hash=hash_key, file_ids=files_to_disable, priority=0
+                            )
+                            for f in files:
+                                if f.index in files_to_disable:
+                                    f.priority = 0
+                        logging.info(f"[{torrent.name}] Initialized concurrency: {len(files_to_enable)} active, {len(files_to_disable)} queued.")
+
+                # ==== 步骤1. 收尾处理与优先级干预（仅并发控制模式） ====
+                if max_concurrent_files > 0:
+                    file_ids_to_ignore = []
+                    for file in files:
+                        if file.progress >= 1.0 and file.priority != 0:
+                            file_ids_to_ignore.append(file.index)
+                            state[hash_key][str(file.index)] = 'completed'
+                    if file_ids_to_ignore:
+                        # 在禁用完成文件的同时，立即启用下一批 pending 文件，防止"全部禁用"状态
+                        pending_to_start = []
+                        for file in files:
+                            if (state[hash_key].get(str(file.index)) == 'pending'
+                                    and file.priority == 0 and file.progress < 1.0):
+                                pending_to_start.append(file.index)
+                                if len(pending_to_start) >= len(file_ids_to_ignore):
+                                    break
+                        # 先启用新文件，再禁用完成的文件（避免中间态触发 OnTorrentFinished）
+                        if pending_to_start:
+                            qbt_client.torrents_file_priority(
+                                torrent_hash=torrent.hash, file_ids=pending_to_start, priority=1)
+                            for fid in pending_to_start:
+                                state[hash_key][str(fid)] = 'downloading'
+                        qbt_client.torrents_file_priority(
+                            torrent_hash=torrent.hash, file_ids=file_ids_to_ignore, priority=0)
+                        for file in files:
+                            if file.index in file_ids_to_ignore:
+                                file.priority = 0
 
                 # ==== 步骤1.5 只下载视频文件过滤 ====
                 if only_video_files:
