@@ -2,7 +2,7 @@ version: "3.8"
 services:
   qbittorrent:
     image: ghcr.io/workerspages/qbittorrent-rclone:latest
-    container_name: qbittorrent-webdav
+    container_name: qbittorrent-rclone
     restart: unless-stopped
     environment:
       - QBT_USER=admin
