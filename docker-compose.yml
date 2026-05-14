@@ -6,9 +6,10 @@ services:
     restart: unless-stopped
     environment:
       - QBT_USER=admin
+      - QBT_PASS=adminadmin
       - PORT=8080
       - WEBDAV_USER=admin
-      - WEBDAV_PASS=mypassword
+      - WEBDAV_PASS=adminadmin
       - TZ=Asia/Shanghai
       - MAX_CONCURRENT_FILES=3  # 每个合集（每个独立的种子任务）中同时下载 3 个文件
 
