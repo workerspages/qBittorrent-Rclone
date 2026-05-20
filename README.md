@@ -13,10 +13,11 @@
 - **单端口双服务**：利用 Caddy 代理，彻底突破 PaaS 单端口限制。
 - **自动构建最新版**：通过 GitHub Actions 自动获取并编译最新静态核心。
 - **PaaS 深度优化**：
-  - 支持通过环境变量 `QBT_USER` 自定义 qBittorrent 登录账号。
-  - 自动注入默认密码，绕过新版 qBittorrent 终端随机密码锁死机制。
+  - 支持通过环境变量 `QBT_USER` / `QBT_PASS` 自定义 qBittorrent 登录账号和密码。
+  - 容器启动时自动根据 `QBT_PASS` 生成 PBKDF2-SHA512 密码哈希，彻底消除密码不同步问题。
+  - 自动禁用登录失败 IP 封禁机制（`MaxAuthenticationFailCount=0`），防止反代/PaaS 环境误封。
   - 动态适配 PaaS 平台强行注入的 `$PORT` 环境变量。
-  - 容器启动时自动清除 IP 封禁记录（防 PaaS 网关被 Ban），并自动修复 `/data` 目录读写权限。
+  - 容器启动时自动清除 IP 封禁记录，并自动修复 `/data` 目录读写权限。
 - **双端镜像推送**：自动将镜像推送到 Docker Hub 和 GHCR。
 
 ---
@@ -28,7 +29,7 @@
 | 变量名 | 默认值 | 说明 |
 | :--- | :--- | :--- |
 | `QBT_USER` | `admin` | qBittorrent WebUI 面板的登录用户名。 |
-| `QBT_PASS` | `adminadmin` | 将 `QBT_PASS` 的值更新为你刚刚在 WebUI 中修改的新明文密码(注意，这密码是给`qBittorrent API`登录用的)。 |
+| `QBT_PASS` | `adminadmin` | qBittorrent WebUI 面板的登录密码。容器每次启动时会自动根据此值生成 PBKDF2 密码哈希写入配置，确保密码始终同步。 |
 | `PORT` | `8080` | 对外暴露的唯一公网 HTTP 端口。大部分 PaaS 会自动注入此变量。 |
 | `WEBDAV_USER` | `admin` | WebDAV 服务的登录用户名，**强烈建议修改**。 |
 | `WEBDAV_PASS` | `password` | WebDAV 服务的登录密码，**强烈建议修改**。 |
@@ -49,12 +50,12 @@
 
 ### 正确的密码修改流程
 
-为了确保网盘安全且自动化脚本正常工作，以后修改密码请遵循以下 4 步：
+由于容器每次启动时都会根据 `QBT_PASS` 环境变量自动生成密码哈希，密码修改流程已大幅简化：
 
-1. **WebUI 内修改：** 在 qBittorrent 网页端的“设置 -> WebUI”中修改并保存你的新密码。
-2. **修改环境变量：** 去到你的 Docker 部署环境（例如 Portainer 面板、群晖容器管理器、PaaS 平台的环境变量设置，或者本地的 `docker-compose.yml` 文件中）。
-3. **更新明文：** 将 `QBT_PASS` 的值更新为你刚刚设置的**新明文密码**。
-4. **重启/重建容器：** 重新启动该 Docker 容器。容器重启后，后台脚本就会读取到新的密码，和 qBittorrent 本体再次成功“接头”。
+1. **修改环境变量：** 在 Docker 部署环境中（如 Portainer、PaaS 平台、`docker-compose.yml` 等），将 `QBT_PASS` 的值改为新密码。
+2. **重启容器：** 重新启动容器即可生效，无需在 WebUI 中手动修改密码。
+
+> **说明**：由于密码哈希在每次启动时都会重新生成，即使在 WebUI 中手动修改了密码，下次重启后也会被 `QBT_PASS` 环境变量的值覆盖。所以请始终通过修改 `QBT_PASS` 来更改密码。
 ---
 
 ## 📂 目录结构与数据持久化 (Volumes)
@@ -122,9 +123,9 @@ services:
 
 * **地址**：直接访问根域名 `https://my-app.koyeb.app`
 * **初始账号**：您在 `QBT_USER` 中设置的值（默认 `admin`）
-* **初始密码**：`adminadmin`
+* **初始密码**：`QBT_PASS` 环境变量的值（默认 `adminadmin`）
 
-> **⚠️ 警告**：请在首次登录后，立即前往 **工具 (Tools) -> 选项 (Options) -> Web UI** 中修改密码！(Web UI 修改密码前不要设置环境变量的密码，留空就行，不然会封 IP 无法登录，修改密码后将密码在环境变量中填写并重启容器)
+> **提示**：密码由 `QBT_PASS` 环境变量控制，容器启动时自动同步。如需修改密码，请直接修改 `QBT_PASS` 环境变量并重启容器。本镜像已禁用登录失败 IP 封禁机制，不会因多次密码错误被锁定。
 
 ### 2. 连接 WebDAV 服务拉取文件
 

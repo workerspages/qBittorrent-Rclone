@@ -7,6 +7,7 @@ echo "================================================="
 
 # 获取 PaaS 变量，设置内部端口防冲突
 CURRENT_USER="${QBT_USER:-admin}"
+CURRENT_PASS="${QBT_PASS:-adminadmin}"
 PUBLIC_PORT="${PORT:-8080}"
 QBT_INTERNAL_PORT=18080
 WEBDAV_INTERNAL_PORT=18081
@@ -52,13 +53,15 @@ if [ -n "$RCLONE_CONFIG_BASE64" ]; then
 fi
 
 # 1.2 注入环境变量到脚本头部
-cat << EOF > "$NOTIFY_SCRIPT"
+cat <<EOF > "$NOTIFY_SCRIPT"
 #!/bin/sh
 BARK_SERVER="${BARK_SERVER}"
 BARK_KEY="${BARK_KEY}"
 RCLONE_DESTINATION="${RCLONE_DESTINATION}"
 RCLONE_UPLOAD_MODE="${RCLONE_UPLOAD_MODE:-copy}"
 QBT_INTERNAL_PORT="${QBT_INTERNAL_PORT}"
+QBT_API_USER="${CURRENT_USER}"
+QBT_API_PASS="${CURRENT_PASS}"
 EOF
 
 # 1.3 追加核心运行逻辑（通知 + Rclone 传输）
@@ -85,7 +88,7 @@ is_truly_complete() {
     fi
     # 尝试获取 SID cookie 进行认证
     SID_COOKIE=$(curl -k -s -c - -X POST "http://127.0.0.1:${QBT_PORT}/api/v2/auth/login" \
-        -d "username=admin&password=adminadmin" 2>/dev/null | grep -i 'SID' | awk '{print $NF}')
+        -d "username=${QBT_API_USER}&password=${QBT_API_PASS}" 2>/dev/null | grep -i 'SID' | awk '{print $NF}')
     # 搜索指定名称的种子
     TORRENT_INFO=$(curl -k -s -b "SID=${SID_COOKIE}" \
         "http://127.0.0.1:${QBT_PORT}/api/v2/torrents/info" 2>/dev/null)
@@ -201,8 +204,19 @@ else
     sed -i "/\[Preferences\]/a WebUI\\\\Username=${CURRENT_USER}" "$QBT_CONFIG_FILE"
 fi
 
-# 自动解除 IP 封禁
+# 自动解除 IP 封禁 & 禁用登录失败封禁机制
 sed -i '/BannedIPs=/d' "$QBT_CONFIG_FILE"
+
+# 禁用登录失败次数限制（0 = 永不封禁），防止反代/PaaS 环境误封
+sed -i "s/^WebUI\\\\MaxAuthenticationFailCount=.*/WebUI\\\\MaxAuthenticationFailCount=0/g" "$QBT_CONFIG_FILE"
+if ! grep -q "^WebUI\\\\MaxAuthenticationFailCount=" "$QBT_CONFIG_FILE"; then
+    sed -i "/\[Preferences\]/a WebUI\\\\MaxAuthenticationFailCount=0" "$QBT_CONFIG_FILE"
+fi
+
+sed -i "s/^WebUI\\\\BanDuration=.*/WebUI\\\\BanDuration=0/g" "$QBT_CONFIG_FILE"
+if ! grep -q "^WebUI\\\\BanDuration=" "$QBT_CONFIG_FILE"; then
+    sed -i "/\[Preferences\]/a WebUI\\\\BanDuration=0" "$QBT_CONFIG_FILE"
+fi
 
 # === 安全修复：全面强制开启身份验证，防止 Caddy 反代导致公网免密 ===
 
@@ -216,6 +230,27 @@ fi
 sed -i "s/^WebUI\\\\AuthSubnetWhitelistEnabled=.*/WebUI\\\\AuthSubnetWhitelistEnabled=false/g" "$QBT_CONFIG_FILE"
 if ! grep -q "^WebUI\\\\AuthSubnetWhitelistEnabled=" "$QBT_CONFIG_FILE"; then
     sed -i "/\[Preferences\]/a WebUI\\\\AuthSubnetWhitelistEnabled=false" "$QBT_CONFIG_FILE"
+fi
+
+# 3. 通过 QBT_PASS 环境变量动态设置密码（PBKDF2-SHA512 哈希）
+if [ -n "$CURRENT_PASS" ]; then
+    echo "Generating PBKDF2 password hash from QBT_PASS..."
+    NEW_HASH=$(python3 -c "
+import base64, hashlib, os
+password = '$CURRENT_PASS'
+salt = os.urandom(16)
+h = hashlib.pbkdf2_hmac('sha512', password.encode(), salt, 100000)
+print(f'@ByteArray({base64.b64encode(salt).decode()}:{base64.b64encode(h).decode()})')
+")
+    if [ -n "$NEW_HASH" ]; then
+        sed -i "s|^WebUI\\\\Password_PBKDF2=.*|WebUI\\\\Password_PBKDF2=\"${NEW_HASH}\"|g" "$QBT_CONFIG_FILE"
+        if ! grep -q "^WebUI\\\\Password_PBKDF2=" "$QBT_CONFIG_FILE"; then
+            sed -i "/\[Preferences\]/a WebUI\\\\Password_PBKDF2=\"${NEW_HASH}\"" "$QBT_CONFIG_FILE"
+        fi
+        echo "Password hash updated successfully."
+    else
+        echo "WARNING: Failed to generate password hash, keeping existing password."
+    fi
 fi
 
 # ==========================================
