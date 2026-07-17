@@ -243,6 +243,11 @@ if ! grep -q "^WebUI\\\\ReverseProxySupportEnabled=" "$QBT_CONFIG_FILE"; then
     sed -i "/\[Preferences\]/a WebUI\\\\ReverseProxySupportEnabled=true" "$QBT_CONFIG_FILE"
 fi
 
+sed -i "s/^WebUI\\\\CSRFProtection=.*/WebUI\\\\CSRFProtection=false/g" "$QBT_CONFIG_FILE"
+if ! grep -q "^WebUI\\\\CSRFProtection=" "$QBT_CONFIG_FILE"; then
+    sed -i "/\[Preferences\]/a WebUI\\\\CSRFProtection=false" "$QBT_CONFIG_FILE"
+fi
+
 # 4. 通过 QBT_PASS 环境变量动态设置密码（PBKDF2-SHA512 哈希）
 if [ -n "$CURRENT_PASS" ]; then
     echo "Generating PBKDF2 password hash from QBT_PASS..."
@@ -304,7 +309,10 @@ cat <<EOF > "$CADDY_CONFIG"
         reverse_proxy 127.0.0.1:${WEBDAV_INTERNAL_PORT}
     }
     handle {
-        reverse_proxy 127.0.0.1:${QBT_INTERNAL_PORT}
+        reverse_proxy 127.0.0.1:${QBT_INTERNAL_PORT} {
+            header_up Host 127.0.0.1
+            header_up X-Forwarded-Host 127.0.0.1
+        }
     }
 }
 EOF
