@@ -232,7 +232,18 @@ if ! grep -q "^WebUI\\\\AuthSubnetWhitelistEnabled=" "$QBT_CONFIG_FILE"; then
     sed -i "/\[Preferences\]/a WebUI\\\\AuthSubnetWhitelistEnabled=false" "$QBT_CONFIG_FILE"
 fi
 
-# 3. 通过 QBT_PASS 环境变量动态设置密码（PBKDF2-SHA512 哈希）
+# 3. 强制关闭 Host Header Validation 并开启反向代理支持，防止返回 Unauthorized
+sed -i "s/^WebUI\\\\HostHeaderValidation=.*/WebUI\\\\HostHeaderValidation=false/g" "$QBT_CONFIG_FILE"
+if ! grep -q "^WebUI\\\\HostHeaderValidation=" "$QBT_CONFIG_FILE"; then
+    sed -i "/\[Preferences\]/a WebUI\\\\HostHeaderValidation=false" "$QBT_CONFIG_FILE"
+fi
+
+sed -i "s/^WebUI\\\\ReverseProxySupportEnabled=.*/WebUI\\\\ReverseProxySupportEnabled=true/g" "$QBT_CONFIG_FILE"
+if ! grep -q "^WebUI\\\\ReverseProxySupportEnabled=" "$QBT_CONFIG_FILE"; then
+    sed -i "/\[Preferences\]/a WebUI\\\\ReverseProxySupportEnabled=true" "$QBT_CONFIG_FILE"
+fi
+
+# 4. 通过 QBT_PASS 环境变量动态设置密码（PBKDF2-SHA512 哈希）
 if [ -n "$CURRENT_PASS" ]; then
     echo "Generating PBKDF2 password hash from QBT_PASS..."
     NEW_HASH=$(python3 -c "
