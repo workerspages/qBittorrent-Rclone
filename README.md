@@ -42,6 +42,10 @@
 | `ONLY_VIDEO_FILES`| *false* | 设置为 `true` 时，开启纯视频下载模式，种子中所有非视频文件都会被自动标记为“不下载”|
 | `VIDEO_EXTENSIONS`| *mp4,mkv,avi,wmv,mov,ts,rmvb,webm,flv,f4v,...* | 自定义被认定为“视频”的扩展名（用英文逗号分隔）|
 | `MIN_FREE_SPACE_GB`| *10* | 当剩余空间小于 `10GB` 时就会刹车暂停 |
+| `RESOURCE_MONITOR_ENABLED`| *true* | 是否开启 CPU/内存 资源防 OOM 监控。设置为 `false` 可关闭。|
+| `MAX_CPU_PERCENT`| *95.0* | 触发自动暂停下载的最高 CPU 使用率（百分比）。|
+| `MAX_MEM_PERCENT`| *95.0* | 触发自动暂停下载的最高内存使用率（百分比）。|
+| `SAFE_RESOURCE_PERCENT`| *85.0* | 触发自动恢复下载的安全资源使用率（CPU 和 内存 均低于此值时恢复）。|
 
 *(注：由于采用了单端口代理架构，之前的 `WEBDAV_PORT` 变量已弃用，内部已自动接管。)*
 * **`MIN_FREE_SPACE_GB`**: 设为 `10`（默认值即为 10）。当剩余空间小于 10GB 时就会刹车暂停。
@@ -105,6 +109,10 @@ services:
       - BARK_KEY=您的Bark设备Key请填在这里
 
       - MIN_FREE_SPACE_GB=10  # 当剩余空间小于 10GB 时就会刹车暂停
+      - RESOURCE_MONITOR_ENABLED=true # 开启 CPU/内存 防 OOM 监控
+      - MAX_CPU_PERCENT=95.0
+      - MAX_MEM_PERCENT=95.0
+      - SAFE_RESOURCE_PERCENT=85.0
     ports:
       - "8080:8080" # Caddy 统一代理端口 (同时包含 WebUI 和 WebDAV)
       - "6881:6881" # BT TCP
