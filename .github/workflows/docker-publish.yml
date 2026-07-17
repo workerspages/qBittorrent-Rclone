@@ -46,6 +46,7 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
             ghcr.io/${{ github.repository }}
           tags: |
+            type=ref,event=branch
             type=raw,value=latest
             type=sha,format=short
 
