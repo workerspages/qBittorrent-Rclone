@@ -44,8 +44,7 @@
 | `MIN_FREE_SPACE_GB`| *10* | 当剩余空间小于 `10GB` 时就会刹车暂停 |
 | `RESOURCE_MONITOR_ENABLED`| *true* | 是否开启 CPU/内存 资源防 OOM 监控。设置为 `false` 可关闭。|
 | `MAX_CPU_PERCENT`| *95.0* | 触发自动暂停下载的最高 CPU 使用率（百分比）。|
-| `MAX_MEM_PERCENT`| *95.0* | 触发自动暂停下载的最高内存使用率（百分比）。|
-| `SAFE_RESOURCE_PERCENT`| *85.0* | 触发自动恢复下载的安全资源使用率（CPU 和 内存 均低于此值时恢复）。|
+| `MAX_MEM_PERCENT`| *95.0* | 触发自动暂停下载的最高内存使用率（百分比）。注：触发资源保护暂停后，需要人工介入清理任务并手动恢复下载，防止恢复后再次发生 OOM。|
 
 *(注：由于采用了单端口代理架构，之前的 `WEBDAV_PORT` 变量已弃用，内部已自动接管。)*
 * **`MIN_FREE_SPACE_GB`**: 设为 `10`（默认值即为 10）。当剩余空间小于 10GB 时就会刹车暂停。
@@ -112,7 +111,6 @@ services:
       - RESOURCE_MONITOR_ENABLED=true # 开启 CPU/内存 防 OOM 监控
       - MAX_CPU_PERCENT=95.0
       - MAX_MEM_PERCENT=95.0
-      - SAFE_RESOURCE_PERCENT=85.0
     ports:
       - "8080:8080" # Caddy 统一代理端口 (同时包含 WebUI 和 WebDAV)
       - "6881:6881" # BT TCP

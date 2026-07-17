@@ -46,7 +46,6 @@ auto_resume_missing = os.environ.get('AUTO_RESUME_MISSING', 'true').lower() == '
 resource_monitor_enabled = os.environ.get('RESOURCE_MONITOR_ENABLED', 'true').lower() == 'true'
 max_cpu_percent = float(os.environ.get('MAX_CPU_PERCENT', 95.0))
 max_mem_percent = float(os.environ.get('MAX_MEM_PERCENT', 95.0))
-safe_resource_percent = float(os.environ.get('SAFE_RESOURCE_PERCENT', 85.0))
 
 def get_memory_usage_percent():
     try:
@@ -208,24 +207,16 @@ def monitor_torrents():
                 cpu_pct = get_cpu_usage_percent()
                 
                 is_resource_critical = mem_pct > max_mem_percent or cpu_pct > max_cpu_percent
-                is_resource_safe = mem_pct < safe_resource_percent and cpu_pct < safe_resource_percent
                 
                 if is_resource_critical:
                     logging.warning(f"[Resource Alert] Memory: {mem_pct:.1f}%, CPU: {cpu_pct:.1f}% exceeds limits (Mem: {max_mem_percent}%, CPU: {max_cpu_percent}%)!")
                     downloading = qbt_client.torrents_info(status_filter='downloading')
                     if downloading:
                         hashes = [t.hash for t in downloading]
-                        logging.info(f"Pausing {len(hashes)} active torrent(s) to prevent OOM/CPU throttling.")
+                        logging.info(f"Pausing {len(hashes)} active torrent(s) to prevent OOM/CPU throttling. Manual resume required.")
                         qbt_client.torrents_pause(torrent_hashes=hashes)
-                        state['auto_paused_due_to_resource'] = list(set(state.get('auto_paused_due_to_resource', []) + hashes))
-                        save_state(state)
                     time.sleep(scan_interval)
                     continue
-                elif is_resource_safe and 'auto_paused_due_to_resource' in state and state['auto_paused_due_to_resource']:
-                    logging.info(f"[Resource Safe] Memory: {mem_pct:.1f}%, CPU: {cpu_pct:.1f}%. Resuming previously paused torrents.")
-                    qbt_client.torrents_resume(torrent_hashes=state['auto_paused_due_to_resource'])
-                    state['auto_paused_due_to_resource'] = []
-                    save_state(state)
 
             # ==== 步骤 0.2 磁盘空间保护监控 ====
             if min_free_space_gb > 0:
