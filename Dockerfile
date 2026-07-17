@@ -5,7 +5,7 @@ ENV PORT=8080
 ENV TZ=Asia/Shanghai
 ENV QBT_PROFILE=/data/config
 
-# 安装依赖、Rclone、Caddy，并获取固定旧版本(4.5.5.10) qBittorrent-Enhanced-Edition
+# 安装依赖、Rclone、Caddy，并获取固定旧版本(5.1.3.10) qBittorrent-Enhanced-Edition
 RUN apk update && \
     apk add --no-cache bash curl unzip rclone caddy tzdata ca-certificates jq sed python3 py3-requests py3-pip && \
     pip3 install --no-cache-dir qbittorrent-api --break-system-packages && \
