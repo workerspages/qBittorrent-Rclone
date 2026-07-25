@@ -44,8 +44,8 @@ auto_resume_missing = os.environ.get('AUTO_RESUME_MISSING', 'true').lower() == '
 
 # ================= 2.5 资源监控防 OOM 配置 =================
 resource_monitor_enabled = os.environ.get('RESOURCE_MONITOR_ENABLED', 'true').lower() == 'true'
-max_cpu_percent = float(os.environ.get('MAX_CPU_PERCENT', 95.0))
-max_mem_percent = float(os.environ.get('MAX_MEM_PERCENT', 95.0))
+max_cpu_percent = float(os.environ.get('MAX_CPU_PERCENT', 98.0))
+max_mem_percent = float(os.environ.get('MAX_MEM_PERCENT', 98.0))
 
 def get_memory_usage_percent():
     try:
