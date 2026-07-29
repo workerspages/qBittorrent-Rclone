@@ -43,8 +43,8 @@
 | `VIDEO_EXTENSIONS`| *mp4,mkv,avi,wmv,mov,ts,rmvb,webm,flv,f4v,...* | 自定义被认定为“视频”的扩展名（用英文逗号分隔）|
 | `MIN_FREE_SPACE_GB`| *10* | 当剩余空间小于 `10GB` 时就会刹车暂停 |
 | `RESOURCE_MONITOR_ENABLED`| *true* | 是否开启 CPU/内存 资源防 OOM 监控。设置为 `false` 可关闭。|
-| `MAX_CPU_PERCENT`| *99.0* | 触发自动暂停下载的最高 CPU 使用率（百分比）。|
-| `MAX_MEM_PERCENT`| *99.0* | 触发自动暂停下载的最高内存使用率（百分比）。注：触发资源保护暂停后，需要人工介入清理任务并手动恢复下载，防止恢复后再次发生 OOM。|
+| `MAX_CPU_PERCENT`| *99.8* | 触发自动暂停下载的最高 CPU 使用率（百分比）。|
+| `MAX_MEM_PERCENT`| *99.8* | 触发自动暂停下载的最高内存使用率（百分比）。注：触发资源保护暂停后，需要人工介入清理任务并手动恢复下载，防止恢复后再次发生 OOM。|
 
 *(注：由于采用了单端口代理架构，之前的 `WEBDAV_PORT` 变量已弃用，内部已自动接管。)*
 * **`MIN_FREE_SPACE_GB`**: 设为 `10`（默认值即为 10）。当剩余空间小于 10GB 时就会刹车暂停。
