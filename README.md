@@ -94,8 +94,8 @@
 # 以 root 权限运行一键安装脚本（半交互式，会提示输入账号密码等）
 bash <(wget -qO- https://raw.githubusercontent.com/workerspages/qBittorrent-Rclone/v5.1.3.10/install.sh)
 
-# 或者：添加 -auto 参数实现全自动无人值守安装（全默认配置）
-bash <(wget -qO- https://raw.githubusercontent.com/workerspages/qBittorrent-Rclone/v5.1.3.10/install.sh) -auto
+# 或者：添加 --auto 参数实现全自动无人值守安装（全默认配置）
+bash <(wget -qO- https://raw.githubusercontent.com/workerspages/qBittorrent-Rclone/v5.1.3.10/install.sh) --auto
 ```
 
 > **注意**：脚本会在运行时询问您各项配置（如端口号、账号密码等）。安装完成后，将自动注册名为 `qbittorrent-rclone` 的 Systemd 服务并设为开机自启。
