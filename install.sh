@@ -11,14 +11,25 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+# 检查是否开启全自动模式
+AUTO_MODE=0
+if [ "$1" = "-auto" ] || [ "$1" = "--auto" ]; then
+    AUTO_MODE=1
+    echo "已开启全自动安装模式，将使用默认配置或环境变量配置。"
+fi
+
 # 2. 检查操作系统 (仅支持 Debian/Ubuntu)
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     if [ "$ID" != "ubuntu" ] && [ "$ID" != "debian" ]; then
         echo "警告: 此脚本主要为 Debian/Ubuntu 设计。当前系统是: $ID。安装可能会失败。"
-        read -p "是否继续? [y/N]: " continue_install
-        if [[ ! "$continue_install" =~ ^[Yy]$ ]]; then
-            exit 1
+        if [ $AUTO_MODE -eq 0 ]; then
+            read -p "是否继续? [y/N]: " continue_install
+            if [[ ! "$continue_install" =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+        else
+            echo "全自动模式下忽略系统警告，继续安装..."
         fi
     fi
 else
@@ -28,23 +39,29 @@ fi
 # 3. 收集配置信息
 echo ""
 echo "--- 基础配置 ---"
-read -p "请输入 qBittorrent WebUI 用户名 [默认: admin]: " QBT_USER
-QBT_USER=${QBT_USER:-admin}
 
-read -p "请输入 qBittorrent WebUI 密码 [默认: adminadmin]: " QBT_PASS
-QBT_PASS=${QBT_PASS:-adminadmin}
+if [ $AUTO_MODE -eq 0 ]; then
+    read -p "请输入 qBittorrent WebUI 用户名 [默认: admin]: " INPUT_QBT_USER
+    read -p "请输入 qBittorrent WebUI 密码 [默认: adminadmin]: " INPUT_QBT_PASS
+    read -p "请输入对外 HTTP 端口 [默认: 8080]: " INPUT_PORT
+    read -p "请输入 WebDAV 用户名 [默认: admin]: " INPUT_WEBDAV_USER
+    read -p "请输入 WebDAV 密码 [默认: password]: " INPUT_WEBDAV_PASS
+    read -p "请输入安装路径 [默认: /opt/qBittorrent-Rclone]: " INPUT_INSTALL_DIR
+fi
 
-read -p "请输入对外 HTTP 端口 [默认: 8080]: " PORT
-PORT=${PORT:-8080}
+QBT_USER=${INPUT_QBT_USER:-${QBT_USER:-admin}}
+QBT_PASS=${INPUT_QBT_PASS:-${QBT_PASS:-adminadmin}}
+PORT=${INPUT_PORT:-${PORT:-8080}}
+WEBDAV_USER=${INPUT_WEBDAV_USER:-${WEBDAV_USER:-admin}}
+WEBDAV_PASS=${INPUT_WEBDAV_PASS:-${WEBDAV_PASS:-password}}
+INSTALL_DIR=${INPUT_INSTALL_DIR:-${INSTALL_DIR:-/opt/qBittorrent-Rclone}}
 
-read -p "请输入 WebDAV 用户名 [默认: admin]: " WEBDAV_USER
-WEBDAV_USER=${WEBDAV_USER:-admin}
-
-read -p "请输入 WebDAV 密码 [默认: password]: " WEBDAV_PASS
-WEBDAV_PASS=${WEBDAV_PASS:-password}
-
-read -p "请输入安装路径 [默认: /opt/qBittorrent-Rclone]: " INSTALL_DIR
-INSTALL_DIR=${INSTALL_DIR:-/opt/qBittorrent-Rclone}
+echo "最终使用的配置:"
+echo "qBittorrent 用户名: $QBT_USER"
+echo "HTTP 端口: $PORT"
+echo "WebDAV 用户名: $WEBDAV_USER"
+echo "安装路径: $INSTALL_DIR"
+echo ""
 
 # 4. 安装基础依赖
 echo "正在更新软件包列表并安装基础依赖..."
