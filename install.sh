@@ -110,8 +110,11 @@ echo "正在创建部署目录结构: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR/data"
 mkdir -p "$INSTALL_DIR/defaults"
 
-echo "拷贝配置文件..."
-CURRENT_DIR=$(pwd)
+echo "正在从 GitHub 获取项目文件..."
+mkdir -p /tmp/qbrclone_src
+curl -sL "https://github.com/workerspages/qBittorrent-Rclone/archive/refs/heads/v5.1.3.10.tar.gz" | tar -xz -C /tmp/qbrclone_src --strip-components=1
+
+CURRENT_DIR="/tmp/qbrclone_src"
 cp "$CURRENT_DIR/qBittorrent.conf" "$INSTALL_DIR/defaults/"
 cp "$CURRENT_DIR/categories.json" "$INSTALL_DIR/defaults/"
 cp "$CURRENT_DIR/monitor.py" "$INSTALL_DIR/defaults/"
@@ -122,6 +125,9 @@ sed -i "s|/data|$INSTALL_DIR/data|g" "$INSTALL_DIR/run.sh"
 sed -i "s|/defaults|$INSTALL_DIR/defaults|g" "$INSTALL_DIR/run.sh"
 sed -i "s|/root/\.config/rclone|$INSTALL_DIR/data/rclone|g" "$INSTALL_DIR/run.sh"
 chmod +x "$INSTALL_DIR/run.sh"
+
+# 清理临时文件
+rm -rf /tmp/qbrclone_src
 
 cat <<EOF > "$INSTALL_DIR/.env"
 QBT_USER=$QBT_USER
