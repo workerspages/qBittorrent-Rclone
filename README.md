@@ -86,7 +86,22 @@
 
 操作基本同上。虽然 Zeabur 支持多端口，但由于本镜像已升级为单端口架构，您现在只需要为它生成**唯一的一个域名**即可同时访问面板和 WebDAV！建议在 Zeabur 的“网络”设置中，额外开启 `6881` (TCP) 的端口转发以加速 BT 下载。
 
-### 3. 本地使用 Docker Compose 测试
+### 3. 原生服务器一键部署 (无 Docker 环境)
+
+如果您有一台 Debian/Ubuntu 服务器（如 VPS 或独立服务器），并且不想或无法安装 Docker，可以使用项目提供的一键安装脚本直接在宿主机上部署：
+
+```bash
+# 1. 克隆本仓库到服务器
+git clone https://github.com/workerspages/qBittorrent-Rclone.git
+cd qBittorrent-Rclone
+
+# 2. 以 root 权限运行一键安装脚本
+sudo bash install.sh
+```
+
+> **注意**：脚本会在运行时询问您各项配置（如端口号、账号密码等）。安装完成后，将自动注册名为 `qbittorrent-rclone` 的 Systemd 服务并设为开机自启。
+
+### 4. 本地使用 Docker Compose 测试
 
 ```yaml
 version: "3.8"
